@@ -115,6 +115,103 @@ an authtoken, then `ngrok http 8765`. Only worth it if A and B both fail.
 
 ---
 
+## Getting a URL that does not change
+
+A quick tunnel mints a new random hostname every start, so it cannot go on a
+landing page. Four ways to fix that, and one thing to understand first.
+
+**The tunnel is not the real problem.** A tunnel makes your laptop reachable.
+A link on a landing page implies someone can click it next Tuesday, which
+means the service has to be up when your laptop is asleep, closed, or on a
+different network. No tunnel solves that. If the link is public and permanent,
+the server belongs on a host, not on your machine.
+
+| option | URL stable | needs your laptop on | cost | effort |
+|---|---|---|---|---|
+| localtunnel `--subdomain` | mostly | yes | free | one flag |
+| ngrok static domain | yes | yes | free tier | sign up |
+| VS Code dev tunnel | yes | yes | free | login |
+| deploy to a host | yes | **no** | free tier | an afternoon |
+
+### A. localtunnel subdomain, the one flag fix
+
+```
+serve_public.cmd mymarket-my
+```
+
+gives `https://mymarket-my.loca.lt`, and `/mcp` on the end is your endpoint.
+
+**Caveat that matters:** the subdomain is first come first served, not
+reserved. If someone else is holding it you silently get a random URL instead,
+so always check what is printed before publishing it. It also serves the
+reminder page, so callers need `bypass-tunnel-reminder: true`.
+
+Good enough for a judging window. Not good enough for a permanent link.
+
+### B. ngrok static domain
+
+ngrok's free plan includes a reserved domain, which does not change between
+restarts. Check the current terms when you sign up.
+
+```
+ngrok config add-authtoken YOUR_TOKEN
+ngrok http 8765 --domain=your-name.ngrok-free.app
+```
+
+Then `serve_public.cmd ngrok`. More reliable than localtunnel and no reminder
+page, but your laptop is still the server.
+
+### C. VS Code dev tunnel
+
+Create it once and the URL persists while it exists, rather than being minted
+per run.
+
+```
+code tunnel --accept-server-license-terms --name mymarket
+```
+
+Or use the Ports panel, forward 8765, set visibility Public. Runs over 443,
+which this network allows.
+
+### D. Deploy it properly
+
+This is the only option that survives your laptop closing.
+
+**It is more practical than it sounds.** The runtime needs about 1.5 MB:
+
+```
+models/model.joblib          12 KB
+models/*.json                10 KB
+data/processed/price_index.parquet    92 KB
+data/processed/daily_prices.parquet  504 KB
+```
+
+The 743 MB of news and examples is training data and never ships. Training
+happens on your machine; the host only serves.
+
+Steps:
+
+1. Commit the four runtime artefacts, or fetch them at boot.
+2. Start with `python -m mymarket.mcp_server --http --host 0.0.0.0 --port $PORT --allow-host *`.
+3. Point your landing page at `https://your-app.example.com/mcp`.
+
+**The real constraint is memory, not disk.** torch plus
+`multilingual-e5-small` wants roughly 500 MB to 1 GB of RAM, which is at or
+above several free tiers. Before committing to a host, check its memory limit.
+If it is too small, the options are a paid tier, a smaller embedding model, or
+splitting the service so the tools that do not need embeddings
+(`price_context`, `backtest_report`, `demo_cases`, `list_domains`) run on the
+small host while prediction stays local.
+
+### Not an option on this network
+
+A Cloudflare **named** tunnel would give a stable URL on your own domain, and
+is the textbook answer to this question. It needs outbound port 7844, which
+this network blocks in both TCP and UDP, so it cannot connect at all from
+here. It would work from a phone hotspot or a different network.
+
+---
+
 ## Why `--allow-host` is needed
 
 The MCP SDK checks the `Host` header on every request and rejects anything it

@@ -1,12 +1,16 @@
 @echo off
 REM Serve MyMarket MCP publicly.
 REM
-REM Usage:  serve_public.cmd            uses localtunnel  (port 443, works on
-REM                                     networks that block Cloudflare)
-REM         serve_public.cmd cloudflare uses cloudflared   (needs port 7844)
+REM   serve_public.cmd                      random localtunnel URL
+REM   serve_public.cmd mymarket-my          STABLE URL: https://mymarket-my.loca.lt
+REM   serve_public.cmd ngrok                ngrok, uses your reserved domain
+REM   serve_public.cmd cloudflare           cloudflared, needs outbound port 7844
+REM
+REM A requested localtunnel subdomain is first come first served, not
+REM reserved. If someone else holds it you get a random one instead, so check
+REM the printed URL before you publish it anywhere.
 REM
 REM WARNING: no authentication. Anyone with the URL can call every tool.
-REM Close both windows when you are done.
 
 setlocal
 set ROOT=%~dp0
@@ -21,19 +25,30 @@ echo Waiting for the server to load the embedding model ...
 timeout /t 20 /nobreak >nul
 
 if /i "%~1"=="cloudflare" goto cloudflare
+if /i "%~1"=="ngrok" goto ngrok
 
+if "%~1"=="" (
+  echo Opening a localtunnel with a random URL.
+  echo Tip: pass a name to request a stable one, e.g. serve_public.cmd mymarket-my
+  echo.
+  npx --yes localtunnel --port %PORT%
+) else (
+  echo Requesting the stable subdomain "%~1" ...
+  echo Your endpoint will be https://%~1.loca.lt/mcp if it is free.
+  echo.
+  npx --yes localtunnel --port %PORT% --subdomain %~1
+)
+goto :eof
+
+:ngrok
+echo Starting ngrok. Set your reserved domain in the command below first.
+echo   ngrok http %PORT% --domain=YOUR-NAME.ngrok-free.app
 echo.
-echo Opening a localtunnel. Your MCP endpoint is the printed URL plus /mcp
-echo If a caller gets an HTML reminder page instead of JSON, they must send
-echo the header:  bypass-tunnel-reminder: true
-echo.
-npx --yes localtunnel --port %PORT%
+ngrok http %PORT%
 goto :eof
 
 :cloudflare
-echo.
-echo Opening a Cloudflare tunnel. This needs outbound port 7844.
-echo If you see "QUIC connection failed" your network blocks it: press Ctrl+C
-echo and run serve_public.cmd with no argument to use localtunnel instead.
+echo Opening a Cloudflare tunnel. Needs outbound port 7844, which this
+echo network blocks. Expect "QUIC connection failed" here.
 echo.
 "%ROOT%tools\cloudflared.exe" tunnel --url http://127.0.0.1:%PORT%
