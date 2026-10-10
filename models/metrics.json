@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T01:54:59.329181+08:00",
+  "generated_at": "2026-10-11T03:45:52.958109+08:00",
   "model": "v1-lightgbm",
   "merged_products": true,
   "calibration": "rejected, it dropped validation macro F1 from 0.466 to 0.403 on 35 rows, so probabilities are uncalibrated",
