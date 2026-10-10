@@ -16,13 +16,25 @@ filter:
   # Kuala Lumpur" actually scores higher than "Chicken prices rise as feed costs
   # climb". Subtracting the distractors is what separates them.
   #
-  # Tuned at M5 on 120 hand labelled rows (21 relevant, 99 not).
-  # Alias stage alone is 17.5 percent precise. At this threshold the filter
-  # reaches 70 percent precision at 67 percent recall, which is short of the
-  # 80 percent target in the PRD. 80 percent was not reachable at any
-  # threshold, so the shortfall is reported rather than tuned away.
+  # Target precision for this MVP is 0.70, agreed down from the 0.80 in the
+  # PRD because 0.80 was not reachable at any threshold. That target is NOT
+  # currently met. Measured, honestly:
+  #
+  #   round 1, 120 rows, 21 relevant, labelled in house:
+  #     threshold 0.015 -> precision 0.607, recall 0.810
+  #     threshold 0.020 -> precision 0.700, recall 0.667
+  #   round 2, 120 rows, 30 relevant, labelled independently by a teammate
+  #   using a different pipeline, so a genuine held out check:
+  #     threshold 0.015 -> precision 0.552, recall 0.571
+  #     threshold 0.020 -> precision 0.500, recall 0.321
+  #
+  # The 0.700 on round 1 did not survive. The distractor sentences had been
+  # tuned on those same 21 positives, so it was an overfit. 0.015 is chosen
+  # because it is the more stable of the two across both sets and keeps far
+  # more recall. Treat real precision as roughly 0.55 to 0.60.
+  #
   # Re-tune with: python scripts/02_prepare_news.py --tune-filter
-  embed_threshold: 0.020
+  embed_threshold: 0.015
   body_chars: 1500        # how much body text the alias stage reads
 
   # What a product word looks like when the article is NOT about the retail

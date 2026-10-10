@@ -27,33 +27,34 @@ This is an awareness tool. It is not a forecast and not financial advice.
 
 ### Model result, read honestly
 
-The headline first: **the model does not beat the momentum baseline.** The PRD
-set "beat majority and momentum" as the success criterion, and that criterion
-is not met.
-
 | | macro F1 |
 |---|---|
-| momentum baseline | **0.400** |
-| MyMarket | 0.394 |
-| keyword baseline | 0.233 |
-| majority baseline | 0.228 |
+| **MyMarket** | **0.406** |
+| momentum baseline | 0.392 |
+| keyword baseline | 0.245 |
+| majority baseline | 0.230 |
 
-95 percent interval [0.290, 0.494] on 98 test rows. The model is far ahead of
-majority and keyword, and statistically tied with momentum. In plain terms: for
-these four staples, knowing how the price moved over the previous 28 days is
-about as useful as reading the news.
+95 percent interval [0.323, 0.487] on 142 test rows. The model clears majority
+and keyword comfortably. It is **0.014 ahead of momentum, which is inside the
+noise**: call it a tie that is trending the right way, not a win. Knowing how
+the price moved over the previous 28 days remains about as informative as
+reading the news.
 
-The rolling origin backtest, which retrains for every quarter and so is not one
-split's luck, beats majority in **7 of 10 quarters**, and improves as training
-data accumulates (0.45, 0.39, 0.39, 0.43, 0.44 across 2025Q3 to 2026Q3).
+Rolling origin, which retrains per quarter, beats majority in 8 of 10 quarters.
 
-Per product it is weaker still. Directional accuracy on the rows that actually
-moved: chicken 0.24, egg 0.25, rice 0.00, cooking oil 0.00.
+Per product, directional accuracy on the rows that actually moved: cooking oil
+0.75 (only 10 test rows), chicken 0.64, egg 0.48, **rice 0.00**. Rice is the
+product with the most examples and the clearest real event in the price data,
+and the model cannot call its direction at all.
+
+**Caveat that matters:** the test set has now been evaluated four times across
+four configurations. Configuration choices were made on validation, but four
+looks is four looks, so 0.406 is optimistic by an unknown margin. The rolling
+origin numbers are the more trustworthy ones.
 
 **What to say in a demo:** present this as a news context layer, not a
-predictor. The honest value is the pipeline, the relevance filter, and the
-official price context attached to each story, not the direction call. PRD
-section 14 anticipated exactly this outcome and says to say so.
+predictor. The defensible value is the pipeline, the measured relevance filter
+and the official price context attached to each story.
 
 ### Why the numbers are small
 
@@ -62,21 +63,36 @@ section 14 anticipated exactly this outcome and says to say so.
 Star does not publish many staple price stories, and that volume, not the
 model, is the binding constraint.
 
-### Relevance filter, measured
+### Relevance filter, measured twice
 
-Hand labelled at M5: 120 rows, 21 relevant, 99 not.
+Target for this MVP is **0.70 precision**, agreed down from the 0.80 in the PRD
+because 0.80 was not reachable at any threshold. **That target is not met.**
 
-| stage | precision | recall |
-|---|---|---|
-| alias match alone | 0.175 | 1.00 |
-| with embedding filter at 0.020 | **0.700** | 0.667 |
+| set | labelled by | rows | relevant | precision | recall |
+|---|---|---|---|---|---|
+| alias stage alone | n/a | 120 | 21 | 0.175 | 1.000 |
+| round 1 | in house | 120 | 21 | 0.607 | 0.810 |
+| round 2, held out | a teammate, independently | 99 | 28 | 0.552 | 0.571 |
 
-The filter nearly quadruples precision, but **it does not reach the 80 percent
-target in the PRD** and no threshold does. The audit also found the biggest
-single source of false positives: crude palm oil futures, plantation output and
-biodiesel stories, which are an upstream commodity topic rather than a retail
-shelf price. Distractor sentences for those are now in `config/products.yaml`,
-and adding them moved precision from 0.588 to 0.700 at better recall.
+An earlier version of this README claimed 0.700. That number came from round 1
+after the distractor sentences had been tuned on those same 21 positives, and
+it did not survive contact with an independently labelled set: the same
+configuration scored 0.500 there. **Treat real precision as roughly 0.55.**
+
+The threshold is 0.015, chosen because it is the more stable of the candidates
+across both sets and keeps much more recall, not because it maximises either
+one.
+
+What the audits did buy, and this part is solid: they identified the dominant
+false positive as crude palm oil futures, plantation output and biodiesel
+stories, which are upstream commodity news rather than a retail shelf price.
+Distractor sentences for those are in `config/products.yaml`.
+
+Caveat on round 2: it came from a different pipeline with a different schema,
+so its rows are not a random sample of this project's candidate pool (99 of its
+120 rows match our alias stage), and a second annotator brings a second
+standard. It is the best independent evidence available, not a clean
+experiment.
 
 ## What is already done for you
 

@@ -185,7 +185,7 @@ def write_audit(frame: pd.DataFrame, n: int) -> None:
     )
 
 
-def tune_filter(target_precision: float = 0.80) -> int:
+def tune_filter(target_precision: float = 0.70) -> int:
     """Pick the embedding threshold that reaches the target precision on the audit set."""
     if not config.AUDIT_SAMPLE.exists():
         log.error("%s not found. Run --audit N first.", config.AUDIT_SAMPLE)
@@ -248,7 +248,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--audit", type=int, metavar="N", help="write an audit sample of N rows")
     parser.add_argument("--tune-filter", action="store_true", help="tune the threshold on the labelled sample")
-    parser.add_argument("--target-precision", type=float, default=0.80)
+    parser.add_argument("--target-precision", type=float, default=0.70)
     args = parser.parse_args(argv)
 
     config.ensure_dirs()

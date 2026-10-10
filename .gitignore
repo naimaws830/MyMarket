@@ -4,6 +4,9 @@ venv/
 data/raw/
 data/processed/
 !data/processed/.gitkeep
+# Hand labelled audit sets are human work and small. Keep them.
+!data/audit/
+!data/audit/*.csv
 models/*.joblib
 __pycache__/
 *.pyc
