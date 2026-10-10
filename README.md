@@ -1,96 +1,99 @@
 # MyMarket
 
-**A kopitiam owner buys chicken every week. If prices are about to jump they
-want to buy early. If prices are about to fall they want to wait. Today they
-find out when the invoice arrives.**
+An MCP server that links Malaysian news to food staple price movements.
 
-MyMarket reads Malaysian news as it is published, keeps only the stories
-genuinely about four food staples, predicts whether the shelf price will move
-over the next 28 days, checks that call against the government's own daily
-price survey, ranks it by urgency, and says what to do about it.
+MyMarket reads Malaysian news from public RSS feeds, filters for stories about
+four food staples, predicts whether the retail price will move over the next 28
+days, validates that prediction against official daily price data, and returns
+a ranked alert with a recommended action.
 
-It is exposed as an MCP server, so the whole thing is usable from a chat
-client.
+**Products:** rice, egg, cooking oil, chicken
+**Price source:** PriceCatcher (KPDN via data.gov.my), daily, CC BY 4.0
+**Interface:** Model Context Protocol, 9 tools, stdio and HTTP
 
-Products: **rice, egg, cooking oil, chicken**.
-Price truth: **PriceCatcher** (KPDN via data.gov.my), daily, CC BY 4.0.
-
-> This is an awareness tool. It is not a forecast and not financial advice.
-> That framing is in the product, not just the pitch: every alert carries the
-> disclaimer, the model abstains when unsure, and the accuracy is published
-> next to the baselines it has to beat.
+MyMarket is an awareness tool, not a price forecast, and not financial advice.
+Alerts carry a disclaimer, the model abstains below a confidence floor, and
+accuracy is reported alongside the baselines it is measured against.
 
 ---
 
-## For judges: the three things worth your time
+## Installation
 
-**1. It does not just score, it recommends.** Every alert carries a priority
-(ACT NOW, WATCH, MONITOR, NO ACTION), a concrete next step, and the reasoning
-behind it.
+Requires Python 3.11.
 
-**2. You can check whether it is actually right, live.** Run `demo_cases` and
-it returns held out predictions where the real price outcome is already known,
-**including the ones it got wrong**. There is no curated highlight reel.
+```bash
+pip install uv
+uv venv
+uv pip install --python .venv/Scripts/python.exe -r requirements.txt   # Windows
+uv pip install --python .venv/bin/python -r requirements.txt           # macOS, Linux
+```
 
-**3. Every weakness is written down.** The limitations section is long and
-specific on purpose. If you find a problem that is not listed, we want to know.
+Run the test suite:
 
-**Verify it yourself in about 15 seconds:**
+```bash
+.venv/Scripts/python.exe -m pytest        # 150 tests
+```
+
+The trained model and processed price data are committed, so a fresh clone
+runs without retraining. No API key is required: when the server runs inside a
+chat host, the host model writes explanations from the facts the tools return.
+
+## Usage
+
+```bash
+# stdio transport, for Claude Desktop and other local clients
+python -m mymarket.mcp_server
+
+# streamable HTTP, for remote clients
+python -m mymarket.mcp_server --http --port 8765
+```
+
+### Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "mymarket": {
+      "command": "C:\\path\\to\\MyMarket\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "mymarket.mcp_server"],
+      "cwd": "C:\\path\\to\\MyMarket",
+      "env": { "PYTHONPATH": "C:\\path\\to\\MyMarket\\src" }
+    }
+  }
+}
+```
+
+### Verifying the model
 
 ```bash
 python scripts/10_prove_it.py
 ```
 
-That deletes the model, shows the tools break, retrains from the training data
-in about six seconds, and the rebuilt file comes back **bit identical**. It
-also prints artefact hashes, unpacks the classifier, and shows the time split
-with its purge gaps.
+Prints artefact hashes, unpacks the classifier, shows that different inputs
+produce different outputs, retrains the model from scratch in about six
+seconds, and displays the time split with its purge gaps.
 
 ---
 
-## Results, stated honestly
+## MCP tools
 
-| | macro F1 |
+| Tool | Returns |
 |---|---|
-| **MyMarket** | **0.333** |
-| momentum baseline | 0.315 |
-| keyword baseline | 0.310 |
-| majority baseline | 0.263 |
+| `list_domains` | tracked products, aliases, price source, horizon |
+| `fetch_news` | recent headlines from the configured feeds |
+| `filter_relevant` | articles that pass all three filter stages, with scores |
+| `predict_impact` | direction, probabilities, confidence band, triggers, reasoning |
+| `price_context` | price index for any window from 2022 onward |
+| `scan_alerts` | ranked alerts with priority, action, reasoning, price context |
+| `backtest_report` | test metrics, baselines, intervals, per product, rolling origin |
+| `forward_validation` | live predictions that have matured, scored against real prices |
+| `demo_cases` | held out predictions with known outcomes, including incorrect ones |
 
-95 percent bootstrap interval **[0.218, 0.449]** on 40 test rows. It beats all
-three baselines, but it is 0.018 ahead of momentum, which is **inside the
-noise**. Call it a tie trending the right way, not a win.
-
-**The number that matters operationally:** of the 20 predictions made at 70
-percent confidence or above, **70 percent were correct**. Overall accuracy
-across every prediction is 50 percent.
-
-### Why macro F1 and not accuracy
-
-Accuracy rewards doing nothing. A model that always says "no change" scores
-**65 percent accuracy** here, because 26 of 40 test cases genuinely are no
-change, while never warning anyone about anything. Macro F1 counts all three
-outcomes equally and scores that model 0.263, correctly exposing it as useless.
-
-```
-MyMarket             accuracy 50.0%    macro F1 0.333
-Always say NEUTRAL   accuracy 65.0%    macro F1 0.263
-```
-
-Macro F1 is a 0 to 1 score, not a hit rate. Reading 0.333 as "right a third of
-the time" is wrong in both directions.
-
-### Per product, including where it is weakest
-
-| product | test rows | macro F1 |
-|---|---|---|
-| chicken | 12 | 0.429 |
-| cooking oil | 8 | 0.256 |
-| rice | 12 | 0.246 |
-| egg | 8 | 0.083 |
-
-Rolling origin, which retrains for each quarter rather than relying on one
-split, beats the majority baseline in **5 of 9 quarters**.
+All tools return JSON. Failures return `{"error": ..., "hint": ...}` rather
+than raising. Requests outside the tracked domain are declined rather than
+answered with a guess.
 
 ---
 
@@ -104,50 +107,40 @@ live RSS  ->  relevance filter  ->  impact model  ->  urgency + action
                   |              daily index           26 mechanisms
                   +-- audited, measured                     |
                                                        MCP server
-                                                       9 tools
 ```
 
-### The relevance filter is the hard part
+### Relevance filter
 
-Not prediction. Deciding which articles are even about a staple price. The
-Star publishes far more recipes and restaurant reviews mentioning chicken than
-it publishes chicken price stories.
+Three stages run in order, cheapest first. Most articles mentioning a staple
+are not about its price: food coverage is dominated by recipes, restaurant
+reviews and festive features.
 
-| stage | rule | precision |
+| Stage | Rule | Precision |
 |---|---|---|
-| 1. Alias match | word boundary match, English and Malay. Exclude phrases are masked out of the text rather than rejecting the whole article, so "chicken rice stalls hit as chicken supply tightens" still matches | 0.175 |
-| 2. Price cue | the headline must contain one of 28 cue words: price, harga, subsidy, tariff, shortage, inflation. The body is deliberately not searched, because a review mentions cost in paragraph nine while a price story says so in the headline | 0.800 |
-| 3. Embedding | contrastive: similarity to the product descriptions minus similarity to 11 distractor sentences | 0.875 combined |
+| Alias match | word boundary match on English and Malay aliases. Exclude phrases are masked out of the text rather than rejecting the article, so "chicken rice stalls hit as chicken supply tightens" still matches | 0.175 |
+| Price cue | the headline or summary must contain one of 28 cue words such as price, harga, subsidy, tariff, shortage. The body is not searched, because a review mentions cost in passing while a price story says so in the headline | 0.800 |
+| Embedding | contrastive score: similarity to the product description sentences minus similarity to 11 distractor sentences | 0.875 combined |
 
-**Why contrastive and not a plain cosine.** Measured directly: "Best fried
-chicken restaurants in Kuala Lumpur" scored **0.8828** while "Chicken prices
-rise as feed costs climb" scored **0.8819**. A plain similarity ranks the noise
-above the signal. Subtracting the distractors separates them.
+A plain cosine similarity does not discriminate here. Measured on the shipped
+model, "Best fried chicken restaurants in Kuala Lumpur" scores 0.8828 while
+"Chicken prices rise as feed costs climb" scores 0.8819, so the noise outranks
+the signal. Subtracting distractor similarity separates them.
 
-**What the audit found.** The dominant false positive was crude palm oil
-futures and plantation output stories: upstream commodity news, not a retail
-shelf price. Distractor sentences for those are now in the config.
+### Price index
 
-### The price index
-
-A unitless index per product, so a 10 kg rice sack and a 1 kg oil packet can be
-averaged without the sack dominating.
+A unitless index per product, so items of different pack sizes can be averaged.
 
 ```
 1. daily median price per item across premises, dropping price <= 0
 2. drop any item-day outside [1/3, 3] x its rolling 30 day median
 3. normalise each item by its own median over its first 90 days
 4. carry each item forward up to 10 days, average across items,
-   then a 7 day rolling mean
+   then take a 7 day rolling mean
 ```
 
-Step 4 was added after the survey cadence was found to degrade: by 2026 cooking
-oil items are surveyed about weekly while eggs remain near daily. Without it
-the cooking oil and rice indexes simply stopped in 2025.
-
-**It finds real events.** Rice rises about 45 percent in September 2023, the
-import crisis following India's export ban. Egg is a flat line until mid 2024
-because eggs were administratively priced.
+Step 4 handles an irregular survey cadence. By 2026 cooking oil items are
+surveyed roughly weekly while eggs remain near daily; without the carry
+forward, the cooking oil and rice indexes terminate in 2025.
 
 ### Labels
 
@@ -157,30 +150,39 @@ fut     = I_p(d + 28)
 ret     = fut / base - 1
 theta_p = max(0.005, 0.5 * std(ret over TRAIN only))
 
-ret >  theta_p  ->  NEGATIVELY AFFECTED   price rises, bad for shoppers
-ret < -theta_p  ->  POSITIVELY AFFECTED   price eases, good for shoppers
+ret >  theta_p  ->  NEGATIVELY AFFECTED   price rises
+ret < -theta_p  ->  POSITIVELY AFFECTED   price eases
 otherwise       ->  NEUTRAL
 ```
 
-theta is computed on the training period only. Computing it on all data would
-leak test volatility into the labels. The floor exists because a price
-controlled product has an almost flat training period, which drives the
-threshold towards zero.
+The threshold is computed on the training period only. The floor of 0.005
+prevents a price controlled product, whose training period is almost flat,
+from having every later rounding movement classified as a real move.
+
+### Model
+
+`multilingual-e5-small` embeddings (384 dimensions) plus a product one hot and
+26 binary event word flags, 411 features total, into a LightGBM multiclass
+classifier. Candidates are selected on validation; the test set is scored once.
+Products are merged into a single group, which outperformed per product
+features on validation given the available data volume.
+
+Calibration was attempted and rejected: on a 35 row validation split it cost
+0.06 macro F1, so the shipped probabilities are uncalibrated.
 
 ### Decision support
 
-A direction and a probability is not a decision. Urgency is scored out of 100
-from four components: model confidence (40), whether the direction costs the
-buyer money (20), whether official prices already agree (25), and how fresh the
-news is (15).
+Urgency is scored out of 100 from four components: model confidence (40),
+whether the direction costs the buyer money (20), whether official prices
+already agree (25), and news recency (15). Scores map to ACT NOW, WATCH,
+MONITOR or NO ACTION.
 
-Two caps stop a coin flip reaching the top of the list. **ACT NOW requires the
-confidence band that actually measured 70 percent correct.** NEUTRAL never
-exceeds NO ACTION, because "carry on as normal" is not an alert.
+Two caps apply. ACT NOW requires the confidence band that measured 70 percent
+correct in testing. NEUTRAL never exceeds NO ACTION.
 
 ### Explainability
 
-26 documented mechanisms turn a detected event word into a causal chain:
+26 documented mechanisms turn detected event words into a causal chain:
 
 ```
 1. The article talks about chicken (it mentions chicken).
@@ -192,125 +194,168 @@ exceeds NO ACTION, because "carry on as normal" is not an alert.
 5. Any change usually reaches the shelf in 1 to 2 weeks.
 ```
 
-Every output states that this is the established domain relationship and **not
-a readout of what the model weighted internally**. Claiming otherwise would be
-inventing an explanation. When the mechanism disagrees with the model, the
-output says to trust the alert less.
+Each output states that this describes the established domain relationship and
+is not a readout of the model's internal weights. Where the mechanism
+contradicts the model's prediction, the output flags the disagreement.
 
-The server cannot invent a number: tools return computed facts and the chat
-host writes the prose, so the server never writes a sentence containing a
-figure it did not compute.
+Tools return computed facts rather than prose, so the server cannot emit a
+figure it did not calculate.
 
 ---
 
-## The nine MCP tools
+## Results
 
-| tool | what it answers |
+| | macro F1 |
 |---|---|
-| `list_domains` | what can you track? |
-| `fetch_news` | what has been published recently? |
-| `filter_relevant` | which of those are really about a staple price? |
-| `predict_impact` | for this story, which way do prices go, and why? |
-| `price_context` | what has this product's official price actually done? any window from 2022 |
-| `scan_alerts` | the main view: ranked alerts, priority, action, price context |
-| `backtest_report` | how accurate is this, against which baselines? |
-| `forward_validation` | how have live predictions scored since launch? |
-| `demo_cases` | past predictions with known outcomes, including the misses |
+| MyMarket | **0.333** |
+| momentum baseline | 0.315 |
+| keyword baseline | 0.310 |
+| majority baseline | 0.263 |
 
-All return JSON. On failure they return `{"error": ..., "hint": ...}` and never
-raise to the client. Out of domain requests are declined, not guessed: ask
-about petrol or Bitcoin and it says no tracked food staple is discussed.
+95 percent bootstrap interval [0.218, 0.449] on 40 test rows. The model beats
+all three baselines, but the 0.018 margin over momentum falls inside the noise.
 
----
+Of 20 predictions made at 70 percent confidence or above, 70 percent were
+correct. Overall accuracy across all predictions is 50 percent.
 
-## Run it
+### Metric choice
 
-```bash
-pip install uv
-uv venv
-uv pip install --python .venv/Scripts/python.exe -r requirements.txt   # Windows
-.venv/Scripts/python.exe -m pytest                                      # 150 tests
+Macro F1 is the unweighted mean of the per class F1 scores, so each of the
+three outcomes counts equally regardless of frequency. Accuracy is unsuitable
+here because a model that always predicts NEUTRAL scores 65 percent accuracy on
+this test set while never issuing a warning:
 
-# the server
-python -m mymarket.mcp_server                      # stdio, for Claude Desktop
-python -m mymarket.mcp_server --http --port 8765   # HTTP, for remote clients
+```
+MyMarket             accuracy 50.0%    macro F1 0.333
+Always predict NEUTRAL  accuracy 65.0%    macro F1 0.263
 ```
 
-The trained model and price data are committed, so a fresh clone works without
-retraining. **No API key is needed:** running inside a chat host, the host
-model writes the explanations from the grounded facts the tools return.
+Macro F1 is a score between 0 and 1, not a success rate.
 
-| document | what it is |
+### Per product
+
+| Product | Test rows | Macro F1 |
+|---|---|---|
+| chicken | 12 | 0.429 |
+| cooking oil | 8 | 0.256 |
+| rice | 12 | 0.246 |
+| egg | 8 | 0.083 |
+
+Rolling origin validation, which retrains for each quarter, beats the majority
+baseline in 5 of 9 quarters.
+
+### Validation method
+
+The split is by time with a 28 day purge gap at each boundary, never random,
+because a single news event produces many articles sharing one label. Metrics
+include per class precision and recall, confusion matrices, directional
+accuracy on moved rows only, bootstrap confidence intervals, three baselines,
+and a rolling origin backtest.
+
+---
+
+## Project structure
+
+```
+config/           products.yaml, sources.yaml, item_mapping.csv
+data/audit/       hand labelled relevance audit sets
+data/processed/   price index and daily prices (committed), training scratch (ignored)
+models/           trained model, thresholds, label map, metrics
+scripts/          numbered offline pipeline, daily refresh, verification, docs
+src/mymarket/     ingest, filter, prices, model, llm, store, mcp_server
+tests/            150 tests
+```
+
+### Pipeline
+
+| Script | Purpose |
 |---|---|
-| [DEMO_QA.md](DEMO_QA.md) | the exact questions to ask and the answers they produce |
-| [CONFIDENCE_EXPLAINED.md](CONFIDENCE_EXPLAINED.md) | where the confidence number comes from, and what it is not |
-| [MyMarket_Project_Document.pdf](MyMarket_Project_Document.pdf) | the full 12 page write up, generated from the repository so its numbers cannot drift |
-| [PRD.md](PRD.md) | the governing spec |
-| [PUBLIC_ACCESS.md](PUBLIC_ACCESS.md) | serving it over HTTP and a tunnel |
+| `01_download_prices.py` | download and aggregate PriceCatcher monthly files |
+| `02_prepare_news.py` | clean the news corpus, write audit samples, tune the filter |
+| `03_build_price_index.py` | build the per product price index and plots |
+| `04_map_items.py` | map PriceCatcher items to products |
+| `05_build_examples.py` | join news to prices, label, split by time |
+| `06_train_local.py` | train and evaluate on CPU |
+| `07_evaluate.py` | per product metrics, baselines, rolling origin |
+| `08_demo_cases.py` | select held out cases with known outcomes |
+| `09_build_project_doc.py` | generate the project PDF from the repository |
+| `10_prove_it.py` | verify the model is trained and reproducible |
+| `daily_refresh.py` | refresh prices, log predictions, score matured ones |
+
+`06_train_local.py` rewrites `metrics.json`, so `07_evaluate.py` must run after
+it to restore the per product and rolling origin sections.
+
+### Documentation
+
+| File | Contents |
+|---|---|
+| [PRD.md](PRD.md) | product requirements and design decisions |
+| [MyMarket_Project_Document.pdf](MyMarket_Project_Document.pdf) | 12 page write up, generated from the repository |
+| [DEMO_QA.md](DEMO_QA.md) | example questions and their verified outputs |
+| [CONFIDENCE_EXPLAINED.md](CONFIDENCE_EXPLAINED.md) | derivation of the confidence score |
+| [PUBLIC_ACCESS.md](PUBLIC_ACCESS.md) | serving over HTTP and tunnels |
+| [MANUAL_STEPS.md](MANUAL_STEPS.md) | steps requiring manual intervention |
 
 ---
 
 ## Limitations
 
-The binding constraint, stated first: **153,981 articles produce only 305
-labelled examples.** The alias stage finds 3,470 candidates and the filter
-keeps about a fifth. Malaysian papers print far more recipes than rice price
-stories. Almost everything below follows from that.
+The binding constraint is training data volume: 153,981 articles yield 305
+labelled examples. The alias stage finds 3,470 candidates and the filter
+retains roughly a fifth. Most limitations below follow from this.
 
-- **The margin over momentum is 0.018**, inside the noise. For raw accuracy you
-  could use momentum alone. What momentum cannot do is tell you why, surface
-  the article, or flag a subsidy announcement the day it lands.
-- **The test set has been evaluated several times** across configurations.
-  Selection was done on validation, but repeated looks make the headline figure
-  optimistic by an unknown margin. The rolling origin numbers are more
-  trustworthy.
-- **Egg scores 0.083** on 8 test rows. Rice has the most examples and among the
-  worst directional accuracy, and we do not know why.
-- **The model over-predicts NEUTRAL** and can be confidently wrong. One demo
-  case is a 95 percent confident NEUTRAL that was wrong.
-- **Probabilities are uncalibrated.** Calibration was attempted and rejected
-  because it cost 0.06 macro F1 on a 35 row validation split. So 0.95
-  confidence means the trees agreed strongly, not a 95 percent chance of being
-  right. What the number is worth was measured instead: 70 percent correct
-  above 0.70, 75 percent above 0.85.
-- **Filter precision is 0.55 to 0.61, not 0.80.** Two audits of 120 rows were
-  run. Round 1 was human labelled, but the distractor sentences were tuned on
-  it, so its 0.700 was an overfit. Round 2 was held out and scored 0.500, but
-  its labels were produced by an AI assistant and are self marked "not
-  human-validated". **No set is both human labelled and genuinely held out.** A
-  third audit is the top open task.
-- **Typos defeat the alias stage.** Matching is exact, so "chiken" does not
-  match. Fuzzy matching is a known, unimplemented fix.
-- **Trained on one source.** The Star only, run live against Malay Mail,
-  Bernama and FMT, so live performance is an out of source test.
-- **The item mapping is provisional**, ranked by history length and survey
-  coverage rather than reviewed by a domain expert.
-- **Forward validation has no matured rows yet.** The mechanism works; the
-  first scoreable prediction is 28 days after the daily job starts.
-- **Consumer electronics was removed** rather than validated badly. No free
-  Malaysian dataset carries product level electronics prices, and the CPI
-  fallback gives roughly 60 independent labels, which cannot support an honest
-  claim.
+- The 0.018 margin over the momentum baseline is within the confidence
+  interval. Momentum alone is competitive on accuracy; what it cannot provide
+  is the article, the mechanism, or same day notice of a policy change.
+- The test set has been evaluated across several configurations. Selection was
+  performed on validation, but repeated evaluation makes the headline figure
+  optimistic by an unquantified margin. Rolling origin results are more
+  reliable.
+- Egg scores 0.083 macro F1 on 8 test rows. Rice has the most examples and
+  among the worst directional accuracy, which is unexplained.
+- The model over-predicts NEUTRAL and can be confidently incorrect. One
+  included demo case is a 95 percent confidence NEUTRAL that was wrong.
+- Probabilities are uncalibrated. A confidence of 0.95 indicates strong
+  agreement among trees, not a 95 percent likelihood of correctness. Measured
+  empirically: 70 percent correct above 0.70, 75 percent above 0.85.
+- Filter precision is 0.55 to 0.61 rather than 0.80. Two audits of 120 rows
+  were conducted. The first was human labelled but the distractor sentences
+  were tuned against it, making its 0.700 an overfit. The second was held out
+  and scored 0.500, but its labels were AI generated and marked "not
+  human-validated". No audit set is both human labelled and genuinely held out.
+- Alias matching is exact, so misspellings are not matched. Fuzzy matching is
+  unimplemented.
+- Training data comes from a single publisher. Live operation against other
+  outlets is an out of source test.
+- The item mapping is provisional, ranked by history length and survey
+  coverage rather than expert review.
+- Forward validation has no matured rows. The first scoreable prediction falls
+  28 days after the daily job begins running.
+- Consumer electronics was removed from scope. No free Malaysian dataset
+  provides product level electronics prices, and the CPI fallback yields
+  roughly 60 independent labels, insufficient for a defensible claim.
 
-### What would actually improve it
+### Roadmap
 
-1. A broader news corpus beyond one outlet. Everything else is downstream of
-   example count.
-2. A third labelled audit, human, on this pipeline's own candidate pool.
-3. Fuzzy alias matching. Cheap, and rapidfuzz is already a dependency.
-4. Investigate rice specifically.
-5. Per product models, once the data allows. Merging was forced by data volume,
-   not chosen on principle.
+1. Broaden the news corpus beyond a single publisher.
+2. Conduct a human labelled audit on this pipeline's own candidate pool.
+3. Add fuzzy alias matching (rapidfuzz is already a dependency).
+4. Investigate the rice underperformance.
+5. Restore per product models once data volume allows.
 
 ---
 
-## Provenance
+## Data and attribution
 
-Price data is PriceCatcher via data.gov.my under CC BY 4.0. Training news is
-the Kaggle dataset `azraimohamad/news-article-weekly-updated`. Live news is
-read from public RSS feeds, respecting robots.txt at one request per second,
-with no stealth fetching. Malay Mail and FMT disallow their article paths, so
-their bodies are never fetched and only the feed content is used.
+Price data is PriceCatcher, published by KPDN via data.gov.my under CC BY 4.0.
+Training news is the Kaggle dataset
+`azraimohamad/news-article-weekly-updated`. Live news is read from public RSS
+feeds at one request per second, respecting robots.txt, with no stealth
+fetching. Malay Mail and Free Malaysia Today disallow automated access to
+article pages, so only their feed content is used.
 
-`.claude/context/` holds OAC standards files written for TypeScript, which do
-not govern this Python project. The governing spec is [PRD.md](PRD.md).
+PriceCatcher is a price surveillance survey. For inflation analysis the
+appropriate source is DOSM CPI.
+
+`.claude/context/` contains OAC standards files written for TypeScript
+projects; they do not govern this codebase.
