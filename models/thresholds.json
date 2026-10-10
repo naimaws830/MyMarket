@@ -1,6 +1,4 @@
 {
-  "min_confidence": 0.42,
-  "alert_confidence": 0.54,
-  "chosen_on": "validation split",
-  "note": "A three class model trained on about 500 examples produces flat probabilities, so the usual 0.55 floor would abstain on everything. These are picked from the validation confidence distribution, not from a default."
+  "min_confidence": 0.55,
+  "alert_confidence": 0.7
 }

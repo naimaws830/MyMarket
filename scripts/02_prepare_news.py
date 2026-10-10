@@ -161,11 +161,11 @@ def write_audit(frame: pd.DataFrame, n: int) -> None:
         raise RuntimeError("no article matched any product alias. Check config/products.yaml")
 
     per_product = max(1, n // candidates["product"].nunique())
-    sample = (
-        candidates.groupby("product", group_keys=False)
-        .apply(lambda g: g.sample(min(len(g), per_product), random_state=0), include_groups=True)
-        .reset_index(drop=True)
-    )
+    parts = [
+        group.sample(min(len(group), per_product), random_state=0)
+        for _, group in candidates.groupby("product")
+    ]
+    sample = pd.concat(parts, ignore_index=True)
     sample["relevant"] = ""  # the column you fill in with 1 or 0
 
     config.AUDIT_SAMPLE.parent.mkdir(parents=True, exist_ok=True)

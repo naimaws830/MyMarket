@@ -70,6 +70,29 @@ def forward_return(
     return float(fut / base - 1.0)
 
 
+def trailing_return(
+    series: pd.Series,
+    publish_date: pd.Timestamp,
+    horizon: int,
+) -> float | None:
+    """Return over the `horizon` days ENDING the day before publication.
+
+    This is what the momentum baseline is allowed to know: how the price moved
+    just before the article appeared. It never looks forward, so it is a fair
+    opponent for the model rather than a free pass.
+    """
+    if series.empty:
+        return None
+    end = publish_date - pd.Timedelta(days=1)
+    start = end - pd.Timedelta(days=horizon)
+    if start < series.index.min():
+        return None
+    base, last = value_at(series, start), value_at(series, end)
+    if base is None or last is None or base <= 0:
+        return None
+    return float(last / base - 1.0)
+
+
 def theta_from(returns: pd.Series, k: float, floor: float = MIN_THETA) -> float:
     """Per product threshold, k times the standard deviation of TRAIN returns only.
 
@@ -162,6 +185,12 @@ def build_labels(
 
     out["ret"] = [
         forward_return(series_by_product.get(row.product, pd.Series(dtype=float)), row.date, horizon)
+        for row in out.itertuples(index=False)
+    ]
+    # The momentum baseline reads this. It is computed here so that the
+    # baseline and the labels come from exactly the same price series.
+    out["prev_ret"] = [
+        trailing_return(series_by_product.get(row.product, pd.Series(dtype=float)), row.date, horizon)
         for row in out.itertuples(index=False)
     ]
 

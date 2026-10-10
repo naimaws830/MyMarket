@@ -16,13 +16,18 @@ filter:
   # Kuala Lumpur" actually scores higher than "Chicken prices rise as feed costs
   # climb". Subtracting the distractors is what separates them.
   #
-  # This default was set from a handful of examples. Replace it with a tuned
-  # value by labelling the audit sample at M5 and running:
-  #   python scripts/02_prepare_news.py --tune-filter
-  embed_threshold: 0.055
+  # Tuned at M5 on 120 hand labelled rows (21 relevant, 99 not).
+  # Alias stage alone is 17.5 percent precise. At this threshold the filter
+  # reaches 70 percent precision at 67 percent recall, which is short of the
+  # 80 percent target in the PRD. 80 percent was not reachable at any
+  # threshold, so the shortfall is reported rather than tuned away.
+  # Re-tune with: python scripts/02_prepare_news.py --tune-filter
+  embed_threshold: 0.020
   body_chars: 1500        # how much body text the alias stage reads
 
-  # What a product word looks like when the article is NOT about its price.
+  # What a product word looks like when the article is NOT about the retail
+  # shelf price a shopper pays. Each line here was added because the M5 audit
+  # showed it surviving the filter.
   distractor_sentences:
     - A restaurant review, a recipe or a food lifestyle story.
     - A wildlife, nature or conservation story.
@@ -30,6 +35,14 @@ filter:
     - A company brand, a product launch or a marketing campaign.
     - A crime, an accident or a court story.
     - A health, nutrition or diet article.
+    # Upstream commodity trade. A crude palm oil futures or plantation output
+    # story is not a retail cooking oil price story, and these were the single
+    # biggest source of false positives in the audit.
+    - Crude palm oil futures, CPO prices, plantation output or export tonnage.
+    - Biodiesel, biorefinery or renewable fuel policy.
+    - A stock market, banking, earnings or corporate deal story.
+    - Customs enforcement, smuggling or contraband seizures.
+    - A weather, flood or disaster report with no mention of prices.
 
 domains:
   food_staples:
@@ -76,6 +89,7 @@ domains:
         description_sentences:
           - The retail price of rice in Malaysia went up or down.
           - Supply, shortage, import, export ban or subsidy of rice and paddy.
+          - Government subsidy, price control or cost of living measures affecting rice.
         # PriceCatcher item_category values that hold this product. Used to keep
         # a safe superset at download time and to suggest rows for the M3 review.
         preferred_categories: [BERAS]
@@ -91,6 +105,7 @@ domains:
         description_sentences:
           - The retail price of chicken eggs in Malaysia went up or down.
           - Supply, shortage, subsidy or ceiling price of eggs.
+          - Government subsidy, price control or cost of living measures affecting eggs.
         preferred_categories: [TELUR]
         # Quail, duck, salted and free range eggs are different products.
         reject_item_terms: [PUYUH, ITIK, MASIN, KAMPUNG]
@@ -104,6 +119,7 @@ domains:
         description_sentences:
           - The retail price of cooking oil in Malaysia went up or down.
           - Subsidy, supply, shortage or cost of cooking oil.
+          - Government subsidy, price control or cost of living measures affecting cooking oil.
         # Palm oil is an event word, not an alias. It is a crude price story.
         preferred_categories: [MINYAK DAN LEMAK]
         reject_item_terms: [SAPI, GHEE]
@@ -117,6 +133,7 @@ domains:
         description_sentences:
           - The retail price of chicken in Malaysia went up or down.
           - Supply, feed cost, ceiling price or shortage of chicken.
+          - Government subsidy, price control or cost of living measures affecting chicken.
         preferred_categories: [AYAM]
         reject_item_terms: [BELANDA, TUA]
         item_codes: []

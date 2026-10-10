@@ -27,32 +27,56 @@ This is an awareness tool. It is not a forecast and not financial advice.
 
 ### Model result, read honestly
 
+The headline first: **the model does not beat the momentum baseline.** The PRD
+set "beat majority and momentum" as the success criterion, and that criterion
+is not met.
+
 | | macro F1 |
 |---|---|
-| **MyMarket** | **0.350** |
-| majority baseline | 0.261 |
-| momentum baseline | 0.214 |
-| keyword baseline | 0.267 |
+| momentum baseline | **0.400** |
+| MyMarket | 0.394 |
+| keyword baseline | 0.233 |
+| majority baseline | 0.228 |
 
-95 percent interval [0.255, 0.450] on 73 test rows. It beats all three
-baselines on the point estimate, but the interval's lower bound sits on top of
-the majority baseline, so this is suggestive, not proven.
+95 percent interval [0.290, 0.494] on 98 test rows. The model is far ahead of
+majority and keyword, and statistically tied with momentum. In plain terms: for
+these four staples, knowing how the price moved over the previous 28 days is
+about as useful as reading the news.
 
-The stronger evidence is the rolling origin backtest, which retrains for each
-quarter and so is not one lucky split: the model beats majority in **7 of 9
-quarters** (2024Q3 to 2026Q3).
+The rolling origin backtest, which retrains for every quarter and so is not one
+split's luck, beats majority in **7 of 10 quarters**, and improves as training
+data accumulates (0.45, 0.39, 0.39, 0.43, 0.44 across 2025Q3 to 2026Q3).
 
-Two things to say out loud when showing this:
+Per product it is weaker still. Directional accuracy on the rows that actually
+moved: chicken 0.24, egg 0.25, rice 0.00, cooking oil 0.00.
 
-- **Only 551 examples exist.** 153,981 articles yielded 3,470 alias matches and
-  556 that survived the relevance filter. The Star simply does not publish many
-  staple price stories. That is the binding constraint, not the model.
-- **Products are merged into one group.** Per product features lost to a single
-  merged model on validation (0.440 against 0.242), because a few hundred
-  examples cannot support per product parameters. `backtest_report` still breaks
-  results out per product, and they are weak: rice scores 0.267 on 25 test rows.
+**What to say in a demo:** present this as a news context layer, not a
+predictor. The honest value is the pipeline, the relevance filter, and the
+official price context attached to each story, not the direction call. PRD
+section 14 anticipated exactly this outcome and says to say so.
 
----
+### Why the numbers are small
+
+153,981 articles produce only 717 labelled examples. The alias stage finds
+3,470 candidates, and the relevance filter keeps about a fifth of them. The
+Star does not publish many staple price stories, and that volume, not the
+model, is the binding constraint.
+
+### Relevance filter, measured
+
+Hand labelled at M5: 120 rows, 21 relevant, 99 not.
+
+| stage | precision | recall |
+|---|---|---|
+| alias match alone | 0.175 | 1.00 |
+| with embedding filter at 0.020 | **0.700** | 0.667 |
+
+The filter nearly quadruples precision, but **it does not reach the 80 percent
+target in the PRD** and no threshold does. The audit also found the biggest
+single source of false positives: crude palm oil futures, plantation output and
+biodiesel stories, which are an upstream commodity topic rather than a retail
+shelf price. Distractor sentences for those are now in `config/products.yaml`,
+and adding them moved precision from 0.588 to 0.700 at better recall.
 
 ## What is already done for you
 

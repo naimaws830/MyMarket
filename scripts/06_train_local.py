@@ -77,15 +77,17 @@ def baselines(frame: pd.DataFrame, split: str) -> dict[str, float]:
     truth = target["label"].to_numpy()
     majority = train["label"].mode()[0] if not train.empty else "STABLE"
 
-    # Momentum: the sign of the return the model is trying to predict, taken
-    # from the previous window. Positive past return predicts UP.
+    # Momentum: the sign of each article's own trailing return, the price move
+    # over the horizon just before it was published. An earlier version read the
+    # last training row instead, which made it a constant per product predictor
+    # and swung it by 0.25 macro F1 between runs.
     momentum = []
     for row in target.itertuples(index=False):
-        past = train[(train["product"] == row.product) & (train["date"] < row.date)]
-        if past.empty or pd.isna(past["ret"].iloc[-1]):
+        previous = getattr(row, "prev_ret", None)
+        if previous is None or pd.isna(previous):
             momentum.append(majority)
         else:
-            previous, theta = past["ret"].iloc[-1], row.theta
+            theta = row.theta
             momentum.append("UP" if previous > theta else "DOWN" if previous < -theta else "STABLE")
 
     up_words = {"shortage", "flood", "drought", "bird flu", "feed cost", "import ban", "tariff", "levy"}

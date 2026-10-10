@@ -163,3 +163,40 @@ def test_quarter_id():
     dates = pd.Series(pd.to_datetime(["2024-01-15", "2024-05-02"]))
 
     assert lb.quarter_id(dates).tolist() == ["2024Q1", "2024Q2"]
+
+
+def test_trailing_return_looks_backward_only():
+    rising = np.linspace(1.0, 2.0, 201)
+    series = index_frame("rice", "2024-01-01", 201, rising).set_index("date")["index"]
+
+    prev = lb.trailing_return(series, pd.Timestamp("2024-01-31"), horizon=14)
+
+    # base is day 15 (d - 1 - 14), last is day 29 (d - 1). Nothing after d is read.
+    assert prev == pytest.approx(rising[29] / rising[15] - 1, abs=1e-9)
+
+
+def test_trailing_return_is_none_before_enough_history():
+    series = index_frame("rice", "2024-01-01", 60, 1.0).set_index("date")["index"]
+
+    assert lb.trailing_return(series, pd.Timestamp("2024-01-05"), horizon=14) is None
+
+
+def test_trailing_return_never_uses_future_prices():
+    """A flat past followed by a spike must give a flat trailing return."""
+    values = np.ones(200)
+    values[100:] = 2.0
+    series = index_frame("rice", "2024-01-01", 200, values).set_index("date")["index"]
+
+    prev = lb.trailing_return(series, pd.Timestamp("2024-01-01") + pd.Timedelta(days=99), horizon=14)
+
+    assert prev == pytest.approx(0.0, abs=1e-9)
+
+
+def test_build_labels_adds_prev_ret(test_settings):
+    index = index_frame("rice", "2024-01-01", 200, np.linspace(1.0, 1.5, 200))
+    examples = pd.DataFrame({"date": [pd.Timestamp("2024-03-01")], "product": "rice"})
+
+    out = lb.build_labels(examples, index, horizon=14, k=0.5)
+
+    assert "prev_ret" in out.columns
+    assert out["prev_ret"].notna().all()
