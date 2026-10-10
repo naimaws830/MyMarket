@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T01:50:48.215314+08:00",
+  "generated_at": "2026-10-11T01:54:59.329181+08:00",
   "model": "v1-lightgbm",
   "merged_products": true,
   "calibration": "rejected, it dropped validation macro F1 from 0.466 to 0.403 on 35 rows, so probabilities are uncalibrated",
@@ -25,5 +25,132 @@
   "n_train": 210,
   "n_val": 35,
   "horizon_days": 28,
-  "note": "Macro F1 on a time split with a purge gap. News is a weak signal for grocery prices, so a result close to the baselines is the expected outcome, not a bug."
+  "note": "Macro F1 on a time split with a purge gap. News is a weak signal for grocery prices, so a result close to the baselines is the expected outcome, not a bug.",
+  "directional_accuracy": 0.21428571428571427,
+  "per_product": {
+    "chicken": {
+      "n_test": 12,
+      "macro_f1": 0.42857142857142855,
+      "macro_f1_ci95": [
+        0.19047619047619047,
+        0.6447619047619045
+      ],
+      "directional_accuracy": 0.5,
+      "label_counts": {
+        "STABLE": 8,
+        "UP": 4
+      }
+    },
+    "cooking_oil": {
+      "n_test": 8,
+      "macro_f1": 0.25641025641025644,
+      "macro_f1_ci95": [
+        0.13333333333333333,
+        0.4666666666666667
+      ],
+      "directional_accuracy": 0.0,
+      "label_counts": {
+        "STABLE": 5,
+        "DOWN": 2,
+        "UP": 1
+      }
+    },
+    "egg": {
+      "n_test": 8,
+      "macro_f1": 0.08333333333333333,
+      "macro_f1_ci95": [
+        0.0,
+        0.19999999999999998
+      ],
+      "directional_accuracy": 0.14285714285714285,
+      "label_counts": {
+        "UP": 7,
+        "STABLE": 1
+      }
+    },
+    "rice": {
+      "n_test": 12,
+      "macro_f1": 0.24561403508771928,
+      "macro_f1_ci95": [
+        0.16666666666666666,
+        0.45454545454545453
+      ],
+      "directional_accuracy": null,
+      "label_counts": {
+        "STABLE": 12
+      }
+    }
+  },
+  "rolling_origin": [
+    {
+      "quarter": "2024Q3",
+      "n_train": 61,
+      "n_test": 14,
+      "macro_f1": 0.25925925925925924,
+      "majority_macro_f1": 0.36363636363636365
+    },
+    {
+      "quarter": "2024Q4",
+      "n_train": 75,
+      "n_test": 25,
+      "macro_f1": 0.33053221288515405,
+      "majority_macro_f1": 0.2962962962962963
+    },
+    {
+      "quarter": "2025Q1",
+      "n_train": 100,
+      "n_test": 40,
+      "macro_f1": 0.35068072024593766,
+      "majority_macro_f1": 0.1728395061728395
+    },
+    {
+      "quarter": "2025Q2",
+      "n_train": 140,
+      "n_test": 31,
+      "macro_f1": 0.23529411764705885,
+      "majority_macro_f1": 0.25333333333333335
+    },
+    {
+      "quarter": "2025Q3",
+      "n_train": 171,
+      "n_test": 39,
+      "macro_f1": 0.42328042328042326,
+      "majority_macro_f1": 0.20238095238095236
+    },
+    {
+      "quarter": "2025Q4",
+      "n_train": 210,
+      "n_test": 14,
+      "macro_f1": 0.4225589225589226,
+      "majority_macro_f1": 0.17543859649122806
+    },
+    {
+      "quarter": "2026Q1",
+      "n_train": 224,
+      "n_test": 21,
+      "macro_f1": 0.16666666666666666,
+      "majority_macro_f1": 0.19999999999999998
+    },
+    {
+      "quarter": "2026Q2",
+      "n_train": 245,
+      "n_test": 20,
+      "macro_f1": 0.2869592281356987,
+      "majority_macro_f1": 0.23655913978494625
+    },
+    {
+      "quarter": "2026Q3",
+      "n_train": 265,
+      "n_test": 20,
+      "macro_f1": 0.24691358024691357,
+      "majority_macro_f1": 0.42857142857142855
+    }
+  ],
+  "model_version": "v1-lightgbm",
+  "limits": [
+    "Direction over a fixed horizon, not a price level forecast.",
+    "News is a weak signal for grocery prices. Expect modest numbers.",
+    "Price truth is PriceCatcher, a KPDN price survey, not an inflation statistic.",
+    "Labels come from a normalised index of a few mapped items per product."
+  ]
 }
