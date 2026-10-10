@@ -40,6 +40,7 @@ from mymarket.filter import relevance  # noqa: E402
 from mymarket.filter.aliases import match_all as alias_match  # noqa: E402
 from mymarket.ingest import fetch_body, rss  # noqa: E402
 from mymarket.llm import explain as explainer  # noqa: E402
+from mymarket.model import impact  # noqa: E402
 from mymarket.model import predict as predictor  # noqa: E402
 from mymarket.prices import index as price_index  # noqa: E402
 from mymarket.store import db  # noqa: E402
@@ -486,6 +487,43 @@ def forward_validation(product: str | None = None) -> dict[str, Any]:
             "Read this alongside backtest_report."
         ),
         "recent": rows[:20],
+    }
+
+
+@mcp.tool()
+@tool_errors
+def demo_cases(right: int = 2, wrong: int = 1) -> dict[str, Any]:
+    """Show past predictions whose real price outcome is already known.
+
+    Use this to check whether the model is actually any good. Live news takes
+    28 days to verify, so these come from the held out test set instead: real
+    headlines, what the model said at the time, and the official PriceCatcher
+    move that followed. Incorrect cases are included on purpose.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "demo_cases_script", config.ROOT / "scripts" / "08_demo_cases.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    cases = module.build(right, wrong)
+    for case in cases:
+        reader = impact.describe(case["predicted"], case["confidence"])
+        case["model_said"] = reader["impact"]
+        case["meaning"] = reader["meaning"]
+        case["confidence_band"] = reader["confidence_band"]
+        case["what_actually_happened"] = impact.describe(case["actual"])["impact"]
+
+    return {
+        "note": (
+            "Held out test cases. The model never saw these during training, and "
+            "the real price move is already known, so each call can be checked."
+        ),
+        "horizon_days": cases[0]["horizon_days"] if cases else None,
+        "cases": cases,
+        "disclaimer": config.DISCLAIMER,
     }
 
 

@@ -21,6 +21,7 @@ TOOL_NAMES = {
     "scan_alerts",
     "backtest_report",
     "forward_validation",
+    "demo_cases",
 }
 
 
