@@ -40,6 +40,7 @@ from mymarket.filter import relevance  # noqa: E402
 from mymarket.filter.aliases import match_all as alias_match  # noqa: E402
 from mymarket.ingest import fetch_body, rss  # noqa: E402
 from mymarket.llm import explain as explainer  # noqa: E402
+from mymarket.model import action  # noqa: E402
 from mymarket.model import impact  # noqa: E402
 from mymarket.model import predict as predictor  # noqa: E402
 from mymarket.prices import index as price_index  # noqa: E402
@@ -367,8 +368,26 @@ def scan_alerts(
             ]
 
         relevant_context = {p: contexts[p] for p in products if p in contexts}
+
+        # Rank and recommend. A direction with a probability is not a decision.
+        for prediction in predictions:
+            rec = action.recommend(
+                prediction["product"],
+                prediction.get("direction", "UNCERTAIN"),
+                prediction.get("confidence"),
+                article.get("published_at"),
+                relevant_context.get(prediction["product"]),
+            )
+            prediction.update(rec.to_dict())
+
+        max_urgency = max((p.get("urgency_score", 0) for p in predictions), default=0)
+        top = max(predictions, key=lambda p: p.get("urgency_score", 0), default=None)
+
         alerts.append(
             {
+                "max_urgency": max_urgency,
+                "priority": top["priority"] if top else "NO ACTION",
+                "headline_action": top["recommended_action"] if top else None,
                 "article": {
                     "title": article["title"],
                     "source": article["source"],
@@ -388,18 +407,30 @@ def scan_alerts(
             }
         )
 
+    alerts = action.rank(alerts)
+
     moving = sorted({
         p["product"]
         for a in alerts
         for p in a["products"]
         if p.get("direction") in {"UP", "DOWN"}
     })
+    act_now = [a for a in alerts if a["priority"] == "ACT NOW"]
+    watch = [a for a in alerts if a["priority"] == "WATCH"]
 
     return {
         "scanned": scanned,
         "alerts": len(alerts),
         "hours": hours,
         "model_trained": model_ready,
+        "action_summary": {
+            "act_now": len(act_now),
+            "watch": len(watch),
+            "top_priority": alerts[0]["priority"] if alerts else "NO ACTION",
+            "what_to_do_first": alerts[0]["headline_action"] if alerts else
+                "Nothing to act on. No recent news points to a staple price move.",
+            "alerts_are_sorted_by": "urgency, most urgent first",
+        },
         "domain_summary": {
             "domain": config.DOMAIN,
             "products_with_a_predicted_move": moving,
@@ -515,6 +546,21 @@ def demo_cases(right: int = 2, wrong: int = 1) -> dict[str, Any]:
         case["meaning"] = reader["meaning"]
         case["confidence_band"] = reader["confidence_band"]
         case["what_actually_happened"] = impact.describe(case["actual"])["impact"]
+
+        # Show the recommendation the user would have been given at the time,
+        # so the demo can ask whether following it would have been right.
+        rec = action.recommend(
+            case["product"],
+            case["predicted"],
+            case["confidence"],
+            case["published"],
+            {"change_7d_pct": None},
+        )
+        case["priority_at_the_time"] = rec.priority
+        case["advice_at_the_time"] = rec.action
+        case["would_have_been"] = (
+            "good advice" if case["predicted"] == case["actual"] else "bad advice"
+        )
 
     return {
         "note": (

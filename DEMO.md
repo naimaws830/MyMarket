@@ -27,86 +27,90 @@ Five minutes, inside Claude Desktop, using the MCP server.
 
 ---
 
-## The five minutes
+## The three minutes
 
-### 1. What is this? (30 seconds)
+The rubric caps the pitch at 3 minutes. This is the tight version. Everything
+in the previous five minute version still works if you get questions.
 
-> **Ask Claude:** What can MyMarket track?
+### 0:00 to 0:20 - the decision, not the model
 
-Calls `list_domains`. Shows four Malaysian food staples and the price source.
-Say: the price truth is PriceCatcher, the government's own daily price survey,
-2022 to today, 80,437 daily observations.
+Say this, do not read a slide:
 
-### 2. It reads real news right now (60 seconds)
+> "A kopitiam owner buys chicken every week. If prices are about to jump, they
+> want to buy early. If prices are about to fall, they want to wait. Today they
+> find out when the invoice arrives. MyMarket reads the news and tells them
+> which way staple prices are heading, and whether to act."
 
-> **Ask Claude:** What Malaysian news in the last 3 days could affect food
-> staple prices?
+### 0:20 to 1:00 - it works on live news
 
-Calls `scan_alerts`. This fetches live RSS from Malay Mail, Bernama and FMT,
-filters about a hundred headlines down to the ones genuinely about staple
-prices, predicts a direction, and attaches the official price trend.
+> **Ask Claude:** What Malaysian news could affect food staple prices, and what
+> should I do about it?
 
-**If it returns zero alerts, that is a feature, not a failure.** Say so out
-loud: "most days the news has nothing to say about rice prices, and a tool that
-invents a signal every day would be lying to you." Then move to step 3, which
-does not depend on today's news.
+Calls `scan_alerts`. Point at **three** things in the output:
+1. it fetched live RSS and filtered about a hundred headlines down
+2. every alert has a **priority** and a **recommended action**, sorted by urgency
+3. the official PriceCatcher trend is attached to each one
 
-### 3. Does it actually work? (120 seconds, the important one)
+**If today returns nothing, say it out loud and keep moving:** "most days the
+news says nothing about rice, and a tool that manufactures a signal every day
+would be lying to you. Here is the summary telling me there is nothing to act
+on." Then go straight to the next step.
+
+### 1:00 to 2:15 - but is it right? (the part that wins points)
 
 > **Ask Claude:** Show me past predictions where we already know the outcome.
 
-Calls `demo_cases`. These come from the held out test set, so the model never
-saw them in training and the real price move is already known.
-
-Work one case at a time:
-
-1. Read the headline. Ask the room which way they think prices went.
-2. Show what the model said, and how confident it was.
-3. Show the actual PriceCatcher move.
-
-The strongest case at the moment:
+Calls `demo_cases`. Held out test cases, so the model never saw them and the
+real price move is already known.
 
 | | |
 |---|---|
 | headline | State to boost food security amid supply disruptions |
-| product | egg |
-| model said | price UP, 68 percent confidence |
-| what happened | **UP, plus 14.1 percent over 28 days** |
-| price index | 0.7998 on 28 Apr 2026 to 0.9125 on 27 May 2026 |
+| advice at the time | **"Buy your next egg stock now, before the increase reaches the shelf"** |
+| what happened | egg prices rose **14.1 percent** in 28 days |
+| verdict | good advice |
 
-**Then show the one it got wrong, and do not skip it:**
+Then immediately:
+
+> "And here is one it got wrong."
 
 | | |
 |---|---|
 | headline | Bulog warns of limited supply of subsidised cooking oil |
-| model said | NEUTRAL, 95 percent confidence |
-| what happened | DOWN, minus 0.69 percent |
+| advice at the time | "Buy cooking oil as normal" |
+| what happened | prices fell 0.69 percent |
+| verdict | bad advice, and it was confident |
 
-Say plainly: it was confident and it was wrong. That is why the tool reports a
-confidence band and why we publish the accuracy numbers.
+Say: "that is why every alert carries a confidence band, and why we publish the
+accuracy rather than the highlight reel."
 
-### 4. How accurate, honestly? (60 seconds)
+### 2:15 to 2:45 - how accurate, honestly
 
-> **Ask Claude:** How accurate is this model, and what are the baselines?
+> **Ask Claude:** How accurate is this model compared to the baselines?
 
-Calls `backtest_report`. Use the numbers in the table below. The key line to
-say out loud: **a model has to beat the dumb baselines or it is not worth
-anything**, and ours beats all three, narrowly.
+Calls `backtest_report`. One sentence: **"a model has to beat the dumb
+baselines or it is worth nothing, and ours beats all three."** Macro F1 0.333
+against majority 0.263, momentum 0.315, keyword 0.310. Alerts above 70 percent
+confidence run at 70 percent precision.
 
-### 5. Close on the limits (30 seconds)
+### 2:45 to 3:00 - the limit, stated first
 
-> **Ask Claude:** Show me the price trend for rice over the last 90 days.
+> "This is an awareness tool, not a forecast, and we say so in the product.
+> News is a weak signal for grocery prices. We measured that instead of hiding
+> it."
 
-Calls `price_context`. Finish on this slide:
-
-- Awareness alert, not a forecast.
-- News is a weak signal for grocery prices. We measured that rather than hid it.
-- PriceCatcher is a price surveillance survey. Inflation analysis belongs to
-  DOSM CPI.
-- The best story in the data is real: rice rose about 45 percent in September
-  2023 after India's export ban, and our index shows it.
+Do not let the clock run out before you say this. Volunteering the limitation
+is worth more in Q and A than one more feature.
 
 ---
+
+## If you get a spare minute
+
+> **Ask Claude:** Show me the rice price trend over the last two years.
+
+Calls `price_context`. Rice rose about 45 percent in September 2023 after
+India's export ban, and the index shows it clearly. It is the best story in the
+data and it is real.
 
 ## The numbers, as of today
 
