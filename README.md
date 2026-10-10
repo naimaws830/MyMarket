@@ -92,7 +92,7 @@ because 0.80 was not reachable at any threshold. **That target is not met.**
 |---|---|---|---|---|---|
 | alias stage alone | n/a | 120 | 21 | 0.175 | 1.000 |
 | round 1 | in house | 120 | 21 | 0.607 | 0.810 |
-| round 2, held out | a teammate, independently | 99 | 28 | 0.552 | 0.571 |
+| round 2, held out | **an AI assistant, not human-validated** | 99 | 28 | 0.552 | 0.571 |
 
 An earlier version of this README claimed 0.700. That number came from round 1
 after the distractor sentences had been tuned on those same 21 positives, and
@@ -108,11 +108,22 @@ false positive as crude palm oil futures, plantation output and biodiesel
 stories, which are upstream commodity news rather than a retail shelf price.
 Distractor sentences for those are in `config/products.yaml`.
 
-Caveat on round 2: it came from a different pipeline with a different schema,
-so its rows are not a random sample of this project's candidate pool (99 of its
-120 rows match our alias stage), and a second annotator brings a second
-standard. It is the best independent evidence available, not a clean
-experiment.
+**Important caveat on round 2.** Every one of its 120 rows carries a note
+beginning "Assistant review (not human-validated)". Those labels were produced
+by an AI assistant, not by a person. They are a useful second opinion and they
+were generated independently of this pipeline, which is why they caught the
+round 1 overfit, but **they are not ground truth**. The only human labelled set
+is round 1, and the distractor sentences were tuned on it, so no set is both
+human labelled and genuinely held out.
+
+Round 2 also came from a different pipeline with a different schema, so its
+rows are not a random sample of this project's candidate pool: 99 of its 120
+rows match our alias stage.
+
+The honest summary: precision is somewhere around 0.55 to 0.61, the lower
+figure resting on AI labels and the higher on human labels that the filter was
+tuned against. A third audit, human labelled on this pipeline's own candidate
+pool, is the top open task.
 
 ## What is already done for you
 

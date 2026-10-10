@@ -4,10 +4,15 @@ venv/
 data/raw/
 data/processed/
 !data/processed/.gitkeep
+# The runtime artefacts, about 600 KB, so a fresh clone can actually serve.
+# Everything else in data/processed is training scratch and stays out.
+!data/processed/price_index.parquet
+!data/processed/daily_prices.parquet
 # Hand labelled audit sets are human work and small. Keep them.
 !data/audit/
 !data/audit/*.csv
-models/*.joblib
+# The trained model is 900 KB and the project is useless without it.
+# models/*.joblib
 __pycache__/
 *.pyc
 .pytest_cache/

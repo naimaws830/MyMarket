@@ -27,8 +27,9 @@ filter:
   #   round 1, 120 rows, 21 relevant, labelled in house:
   #     threshold 0.015 -> precision 0.607, recall 0.810
   #     threshold 0.020 -> precision 0.700, recall 0.667
-  #   round 2, 120 rows, 30 relevant, labelled independently by a teammate
-  #   using a different pipeline, so a genuine held out check:
+  #   round 2, 120 rows, 30 relevant, labelled by an AI assistant using a
+  #   different pipeline. Every row is self marked "not human-validated", so
+  #   this is an independent second opinion, not ground truth:
   #     threshold 0.015 -> precision 0.552, recall 0.571
   #     threshold 0.020 -> precision 0.500, recall 0.321
   #
