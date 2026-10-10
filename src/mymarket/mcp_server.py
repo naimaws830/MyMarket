@@ -304,11 +304,19 @@ def predict_impact(
 
 @mcp.tool()
 @tool_errors
-def price_context(product: str, days: int = 90) -> dict[str, Any]:
-    """Show the recent official price trend for one food staple.
+def price_context(
+    product: str,
+    days: int = 90,
+    start: str | None = None,
+    end: str | None = None,
+    max_points: int = 60,
+) -> dict[str, Any]:
+    """Show the official price trend for one food staple, now or in the past.
 
-    Returns a normalised daily index, the 7 and 30 day percent change, and the
-    tail of the series. The index is unitless, not ringgit.
+    By default this is the last `days` of data. Pass `start` and `end` as
+    YYYY-MM-DD to ask about any historical period instead, for example to check
+    what actually happened after a news story from last year. The index runs
+    from 2022-01 and is unitless, not ringgit.
     """
     cfg = config.settings()
     if product not in cfg.products:
@@ -316,7 +324,19 @@ def price_context(product: str, days: int = 90) -> dict[str, Any]:
             "error": f"unknown product {product!r}",
             "hint": f"known products are {', '.join(cfg.product_keys)}.",
         }
-    return price_index.context(product, days=days).to_dict()
+
+    out = price_index.context(
+        product, days=days, tail=max_points, start=start, end=end
+    ).to_dict()
+
+    first, last = price_index.coverage()
+    out["available_range"] = {"from": str(first.date()), "to": str(last.date())}
+    if not (start or end):
+        out["hint"] = (
+            "This is the most recent window. Pass start and end as YYYY-MM-DD "
+            f"to look at any period from {first.date()} onward."
+        )
+    return out
 
 
 @mcp.tool()

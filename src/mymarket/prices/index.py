@@ -205,6 +205,7 @@ class Context:
     n_days: int
     frequency: str
     series_tail: list[dict]
+    window: dict | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -215,6 +216,7 @@ class Context:
             "data_as_of": self.data_as_of,
             "n_days": self.n_days,
             "frequency": self.frequency,
+            "window": self.window,
             "index_note": (
                 "Unitless index. Each item is normalised by its own median over its "
                 "first 90 days, then averaged across the items of this product."
@@ -224,25 +226,82 @@ class Context:
         }
 
 
-def context(product: str, days: int = 90, tail: int = 30) -> Context:
-    """Build the price context for one product over the trailing window."""
+def coverage() -> tuple[pd.Timestamp, pd.Timestamp]:
+    """First and last date the index covers, across all products."""
+    frame = load()
+    return frame["date"].min(), frame["date"].max()
+
+
+def window_summary(series: pd.Series, first: pd.Timestamp, last: pd.Timestamp) -> dict:
+    """What the price actually did between two dates."""
+    opening, closing = float(series.iloc[0]), float(series.iloc[-1])
+    change = None if opening == 0 else round((closing / opening - 1) * 100, 2)
+    return {
+        "from": first.strftime("%Y-%m-%d"),
+        "to": last.strftime("%Y-%m-%d"),
+        "index_at_start": round(opening, 4),
+        "index_at_end": round(closing, 4),
+        "change_pct": change,
+        "min": round(float(series.min()), 4),
+        "max": round(float(series.max()), 4),
+        "days_covered": int(len(series)),
+    }
+
+
+def context(
+    product: str,
+    days: int = 90,
+    tail: int = 60,
+    start: str | None = None,
+    end: str | None = None,
+) -> Context:
+    """Price context for one product.
+
+    By default this is the trailing `days` window ending at the latest data.
+    Pass `start` and `end` (YYYY-MM-DD) to ask about a historical period
+    instead, which is what checking a past prediction requires: without it the
+    window is always anchored to today and the archive is unreachable.
+    """
     series = series_for(product)
     if series.empty:
         raise PriceDataMissing(f"no price index rows for product {product!r}")
 
-    window = series[series.index >= series.index[-1] - pd.Timedelta(days=days)]
+    historical = bool(start or end)
+    if historical:
+        first = pd.Timestamp(start) if start else series.index.min()
+        last = pd.Timestamp(end) if end else series.index.max()
+        if first > last:
+            first, last = last, first
+        window = series[(series.index >= first) & (series.index <= last)]
+        if window.empty:
+            covered_from, covered_to = series.index.min(), series.index.max()
+            raise PriceDataMissing(
+                f"no {product} price data between {first.date()} and {last.date()}. "
+                f"The index covers {covered_from.date()} to {covered_to.date()}."
+            )
+    else:
+        window = series[series.index >= series.index[-1] - pd.Timedelta(days=days)]
+
+    # Thin evenly rather than taking the tail, so a long window still shows its
+    # shape instead of only its final weeks.
+    step = max(1, len(window) // tail) if tail else 1
+    shown = window.iloc[::step]
+    if len(window) and shown.index[-1] != window.index[-1]:
+        shown = pd.concat([shown, window.iloc[[-1]]])
+
     points = [
         {"date": d.strftime("%Y-%m-%d"), "index": round(float(v), 4)}
-        for d, v in window.tail(tail).items()
+        for d, v in shown.items()
     ]
 
     return Context(
         product=product,
-        latest_index=round(float(series.iloc[-1]), 4),
+        latest_index=round(float(window.iloc[-1] if historical else series.iloc[-1]), 4),
         change_7d_pct=pct_change(series, 7),
         change_30d_pct=pct_change(series, 30),
         data_as_of=series.index[-1].strftime("%Y-%m-%d"),
         n_days=int(len(series)),
         frequency="daily",
         series_tail=points,
+        window=window_summary(window, window.index[0], window.index[-1]),
     )

@@ -140,3 +140,67 @@ def test_pct_change_returns_none_without_enough_history():
 
 def test_pct_change_on_empty_series():
     assert pi.pct_change(pd.Series(dtype=float), 7) is None
+
+
+def frame_for(product, start, days, value=1.0):
+    dates = pd.date_range(start, periods=days, freq="D")
+    return pd.DataFrame(
+        {"date": dates, "product": product, "index": [value + i * 0.001 for i in range(days)],
+         "n_items": 3, "n_obs": 3, "n_premises": 50}
+    )
+
+
+def test_historical_window_reaches_the_archive(monkeypatch):
+    """Without start and end the window is anchored to today and the past is unreachable."""
+    data = frame_for("egg", "2024-01-01", 600)
+    monkeypatch.setattr(pi, "load", lambda: data)
+
+    out = pi.context("egg", start="2024-03-01", end="2024-04-30")
+
+    assert out.window["from"] == "2024-03-01"
+    assert out.window["to"] == "2024-04-30"
+    assert out.window["days_covered"] == 61
+
+
+def test_window_reports_the_move_over_that_period(monkeypatch):
+    dates = pd.date_range("2024-01-01", periods=100, freq="D")
+    values = [1.0] * 50 + [1.2] * 50
+    data = pd.DataFrame({"date": dates, "product": "rice", "index": values,
+                         "n_items": 3, "n_obs": 3, "n_premises": 50})
+    monkeypatch.setattr(pi, "load", lambda: data)
+
+    out = pi.context("rice", start="2024-01-01", end="2024-04-09")
+
+    assert out.window["change_pct"] == pytest.approx(20.0, abs=0.01)
+    assert out.window["index_at_start"] == 1.0
+    assert out.window["index_at_end"] == 1.2
+
+
+def test_window_outside_coverage_explains_the_real_range(monkeypatch):
+    data = frame_for("egg", "2024-01-01", 100)
+    monkeypatch.setattr(pi, "load", lambda: data)
+
+    with pytest.raises(pi.PriceDataMissing, match="covers 2024-01-01"):
+        pi.context("egg", start="2019-01-01", end="2019-12-31")
+
+
+def test_long_window_is_thinned_evenly_not_truncated(monkeypatch):
+    """A tail would show only the final weeks of a two year window."""
+    data = frame_for("egg", "2024-01-01", 600)
+    monkeypatch.setattr(pi, "load", lambda: data)
+
+    out = pi.context("egg", start="2024-01-01", end="2025-12-31", tail=30)
+
+    # 600 days from 2024-01-01 ends on 2025-08-22, so the window clips there.
+    assert len(out.series_tail) <= 35
+    assert out.series_tail[0]["date"] == "2024-01-01"
+    assert out.series_tail[-1]["date"] == "2025-08-22", "the last real point must survive thinning"
+
+
+def test_reversed_dates_are_accepted(monkeypatch):
+    data = frame_for("egg", "2024-01-01", 200)
+    monkeypatch.setattr(pi, "load", lambda: data)
+
+    out = pi.context("egg", start="2024-05-01", end="2024-02-01")
+
+    assert out.window["from"] == "2024-02-01"
