@@ -1,0 +1,43 @@
+# Live news feeds. Flags come from the MANUAL_STEPS M0b browser test.
+# Only feeds with enabled: true are read. Set verified: true yourself once a
+# feed loads in your own browser.
+#
+# Do not add nst.com.my (blocks automated access) or malaysiakini.com
+# (paywalled). The Star exposes no usable feed.
+
+fetch:
+  rate_limit_seconds: 1.0     # per host, never lower this
+  timeout_seconds: 20
+  user_agent: "MyMarket/0.3 (research project; contact via repo)"
+  min_body_chars: 300         # below this the body is treated as paywalled
+  respect_robots: true
+
+feeds:
+  - name: malaymail_malaysia
+    url: https://www.malaymail.com/feed/rss/malaysia
+    enabled: true
+    verified: true
+    has_full_content: true    # full HTML inside content:encoded
+    has_dates: true
+
+  - name: bernama_en
+    url: https://www.bernama.com/en/rssfeed.php
+    enabled: true
+    verified: true
+    has_full_content: false   # short summary only
+    has_dates: false          # no pubDate, read the article page or use fetch time
+
+  - name: fmt_general
+    url: https://www.freemalaysiatoday.com/feed/
+    enabled: true
+    verified: true            # works, 301 redirects to cms.freemalaysiatoday.com/feed
+    has_full_content: false
+    has_dates: true
+
+  # Optional category feeds. Add only URLs that load in your browser.
+  # - name: fmt_business
+  #   url: https://www.freemalaysiatoday.com/category/business/feed/
+  #   enabled: false
+  #   verified: false
+  #   has_full_content: false
+  #   has_dates: true

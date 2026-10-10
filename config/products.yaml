@@ -1,0 +1,122 @@
+# MyMarket product configuration.
+# One domain only: food_staples. Price truth is daily PriceCatcher.
+# Aliases and exclude phrases come from PRD section 5.
+
+label:
+  horizon_days: 14        # H in PRD 6.4
+  theta_k: 0.5            # k in PRD 6.4, theta_p = k * std(ret) over TRAIN only
+  min_premises: 5         # skip a day with fewer reporting premises than this
+
+filter:
+  # Stage two scores an article as (best similarity to the product description
+  # sentences) minus (best similarity to the distractor sentences below).
+  #
+  # A plain similarity does not work here. The e5 model scores anything vaguely
+  # on topic in the 0.82 to 0.88 band, and "Best fried chicken restaurants in
+  # Kuala Lumpur" actually scores higher than "Chicken prices rise as feed costs
+  # climb". Subtracting the distractors is what separates them.
+  #
+  # This default was set from a handful of examples. Replace it with a tuned
+  # value by labelling the audit sample at M5 and running:
+  #   python scripts/02_prepare_news.py --tune-filter
+  embed_threshold: 0.055
+  body_chars: 1500        # how much body text the alias stage reads
+
+  # What a product word looks like when the article is NOT about its price.
+  distractor_sentences:
+    - A restaurant review, a recipe or a food lifestyle story.
+    - A wildlife, nature or conservation story.
+    - A sports, entertainment or celebrity story.
+    - A company brand, a product launch or a marketing campaign.
+    - A crime, an accident or a court story.
+    - A health, nutrition or diet article.
+
+domains:
+  food_staples:
+    label: Food Staples
+    price_source: pricecatcher
+    frequency: daily
+    requires_price_cue: false
+
+    # Event words are model features, not relevance filters. PRD F5.
+    event_words:
+      - subsidy
+      - subsidi
+      - ceiling price
+      - harga siling
+      - SHMMP
+      - shortage
+      - kekurangan
+      - flood
+      - banjir
+      - import ban
+      - export ban
+      - tariff
+      - levy
+      - SST
+      - price control
+      - kawalan harga
+      - festive
+      - Hari Raya
+      - Ramadan
+      - Chinese New Year
+      - ringgit
+      - drought
+      - bird flu
+      - feed cost
+      - minimum wage
+      - palm oil
+
+    products:
+      rice:
+        label: Rice
+        aliases_en: [rice, local white rice, imported rice]
+        aliases_ms: [beras, beras tempatan, padi]
+        exclude_phrases: [fried rice, chicken rice, rice cooker, rice bowl]
+        description_sentences:
+          - The retail price of rice in Malaysia went up or down.
+          - Supply, shortage, import, export ban or subsidy of rice and paddy.
+        # PriceCatcher item_category values that hold this product. Used to keep
+        # a safe superset at download time and to suggest rows for the M3 review.
+        preferred_categories: [BERAS]
+        # Name fragments that are the wrong thing inside the right category.
+        reject_item_terms: [PULUT, BASMATHI, BAYI, TEPUNG]
+        item_codes: []          # filled from config/item_mapping.csv at M3
+
+      egg:
+        label: Egg
+        aliases_en: [egg, eggs]
+        aliases_ms: [telur]
+        exclude_phrases: [Easter egg, nest egg, egg roll, egg tart]
+        description_sentences:
+          - The retail price of chicken eggs in Malaysia went up or down.
+          - Supply, shortage, subsidy or ceiling price of eggs.
+        preferred_categories: [TELUR]
+        # Quail, duck, salted and free range eggs are different products.
+        reject_item_terms: [PUYUH, ITIK, MASIN, KAMPUNG]
+        item_codes: []
+
+      cooking_oil:
+        label: Cooking Oil
+        aliases_en: [cooking oil, vegetable oil]
+        aliases_ms: [minyak masak]
+        exclude_phrases: [engine oil, crude oil price, oil and gas]
+        description_sentences:
+          - The retail price of cooking oil in Malaysia went up or down.
+          - Subsidy, supply, shortage or cost of cooking oil.
+        # Palm oil is an event word, not an alias. It is a crude price story.
+        preferred_categories: [MINYAK DAN LEMAK]
+        reject_item_terms: [SAPI, GHEE]
+        item_codes: []
+
+      chicken:
+        label: Chicken
+        aliases_en: [chicken, poultry, broiler]
+        aliases_ms: [ayam]
+        exclude_phrases: [chicken rice, Ayam Brand, KFC, chicken chop, fried chicken outlet]
+        description_sentences:
+          - The retail price of chicken in Malaysia went up or down.
+          - Supply, feed cost, ceiling price or shortage of chicken.
+        preferred_categories: [AYAM]
+        reject_item_terms: [BELANDA, TUA]
+        item_codes: []

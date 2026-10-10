@@ -1,0 +1,225 @@
+# MyMarket
+
+An MCP server that reads live Malaysian news, finds the stories tied to four food
+staples, and says whether they point to prices going UP, DOWN or STABLE over the
+next 14 days. Every call is checked against official daily price data, and the
+accuracy is reported with the baselines it has to beat.
+
+Products: **rice, egg, cooking oil, chicken**. Price truth: **PriceCatcher**
+(KPDN, via data.gov.my), daily, CC BY 4.0.
+
+This is an awareness tool. It is not a forecast and not financial advice.
+
+---
+
+## Status
+
+| Area | State |
+|---|---|
+| Price pipeline | Working on real data. 2022-01-01 to 2026-09-24, 80,437 daily rows, 122 items |
+| Price index | Built for all four products, about 1,725 days each, plots in `data/processed/plots/` |
+| Live news | 3 feeds working, about 108 unique articles per scan |
+| Relevance filter | Two stages working on live news |
+| MCP server | All 8 tools respond over stdio |
+| Trained model | **Not trained yet.** Needs the Kaggle news dump, which needs your login |
+| Tests | 102 passing |
+
+Because there is no trained model yet, `predict_impact` and `backtest_report`
+return a documented error shape, and `scan_alerts` returns keyword plus price
+context alerts marked `UNVALIDATED`. That is deliberate: the server never
+pretends to a number it has not computed.
+
+---
+
+## What is already done for you
+
+Everything that needed no login, no browser and no Colab has been run:
+
+- PriceCatcher lookups and all 57 monthly files downloaded, aggregated to a
+  daily table, raw files deleted (peak disk stayed near one month).
+- `config/item_mapping.csv` written as a **provisional** mapping of 4 items per
+  product, ranked by history length times survey coverage. Replace it at M3.
+- `data/processed/price_index.parquet` and four sanity plots built.
+- All three RSS feeds tested live, including FMT, which the original spec
+  recorded as failing. It works, it just 301 redirects to
+  `cms.freemalaysiatoday.com/feed`.
+- The whole offline training path proven on synthetic data, so the code is known
+  good before your real data arrives (`tests/test_pipeline_e2e.py`).
+
+## What still needs you
+
+| Step | Why it needs a human | Time |
+|---|---|---|
+| M1 Kaggle news | Needs your Kaggle login | 15 min |
+| M3 Item mapping review | A judgement call about which items represent a product | 20 min |
+| M5 Relevance audit | Someone has to read 120 headlines and say yes or no | 45 min |
+| M6 Training | Needs M1 first. Local CPU or Colab | 30 to 90 min |
+| M7 Claude Desktop | Editing a config file on your machine | 15 min |
+| M8 Scheduling | Task Scheduler or cron on your machine | 15 min |
+
+Full instructions are in [MANUAL_STEPS.md](MANUAL_STEPS.md).
+
+---
+
+## Install
+
+Python 3.11 and git. From the project root:
+
+```bash
+pip install uv
+uv venv
+uv pip install --python .venv/Scripts/python.exe -r requirements.txt   # Windows
+# uv pip install --python .venv/bin/python -r requirements.txt         # Mac or Linux
+.venv/Scripts/python.exe -m pytest
+```
+
+No `.env` is needed to run the server. Copy `.env.example` to `.env` only if you
+want the optional LLM explainer.
+
+---
+
+## Run
+
+```bash
+# Price data (already done, resumes and skips finished months)
+python scripts/01_download_prices.py
+python scripts/04_map_items.py --write-default
+python scripts/03_build_price_index.py
+
+# After M1: news, examples, training
+python scripts/02_prepare_news.py
+python scripts/02_prepare_news.py --audit 120     # then label it, then --tune-filter
+python scripts/05_build_examples.py
+python scripts/06_train_local.py
+python scripts/07_evaluate.py
+
+# The server
+python -m mymarket.mcp_server
+npx @modelcontextprotocol/inspector uv run python -m mymarket.mcp_server
+```
+
+---
+
+## The eight MCP tools
+
+| Tool | What it answers |
+|---|---|
+| `list_domains` | What can you track? |
+| `fetch_news` | What has been published recently? |
+| `filter_relevant` | Which of those stories are really about a staple price? |
+| `predict_impact` | For this story, which way do prices go? |
+| `price_context` | What has this product's official price actually done? |
+| `scan_alerts` | The main one. News plus direction plus price context plus explanation |
+| `backtest_report` | How accurate is this, against which baselines? |
+| `forward_validation` | How have live predictions scored since launch? |
+
+Every tool returns JSON. On failure it returns `{"error": ..., "hint": ...}` and
+never raises at the client.
+
+---
+
+## Why there is usually no LLM key
+
+When MyMarket runs inside a chat host such as Claude Desktop, the host model is
+the explainer. The tools return an `explanation.facts` block of grounded values
+(direction, probabilities, trigger words, price changes) and the host writes the
+sentences. That satisfies PRD flag F12 structurally: the server cannot invent a
+number because it never writes prose about one.
+
+`EXPLAIN_MODE` in `.env` controls this:
+
+- `host` (default) return grounded facts plus a deterministic fallback.
+- `llm` call an OpenAI compatible endpoint. One retry, then the template.
+  Works with Kimi, Groq or Ollama by changing `LLM_BASE_URL`.
+- `template` deterministic sentences only, never calls out.
+
+The server works with no key in all three cases.
+
+---
+
+## How the price index works
+
+Raw PriceCatcher is over a million rows a month, so it is reduced offline and
+the MCP server never touches a raw file (PRD F10).
+
+1. Daily median price per item across premises, dropping non positive prices.
+2. Drop any item-day outside [1/3, 3] times that item's rolling 30 day median,
+   so a data glitch goes but a real subsidy step stays.
+3. Normalise each item by its own median over its first 90 days, which is what
+   lets a 10 kg rice sack and a 1 kg oil packet be averaged together.
+4. Carry each item forward up to 10 days, then average across the product's
+   items and take a 7 day rolling mean.
+
+Step 4 is not in the original spec and was added because the survey cadence
+degrades badly over time: by 2026 cooking oil items are surveyed about weekly
+while eggs are still near daily. Without the carry forward the cooking oil and
+rice indexes simply stopped in 2025. A survey price is a step function, so the
+last observed price is the honest estimate until the next survey.
+
+The index is unitless. 1.0 is the item's own early median, not a ringgit price.
+
+---
+
+## Honest limits
+
+These carry over from the PRD flags. F2, F14 and F15 are gone because consumer
+electronics was dropped in v0.3.
+
+- **F1** Direction only, UP, DOWN or STABLE, plus a plain "bad for shoppers" tag.
+  No claim about magnitude.
+- **F3** News and price data do not fully overlap. PriceCatcher starts 2022-01;
+  only news inside that window can be labelled.
+- **F4** News rarely moves grocery prices inside two weeks. The signal is weak
+  and accuracy will be modest. If the model does not beat momentum, say so and
+  present the keyword triggers and price context as the value instead.
+- **F5** Policy moves staple prices in steps, not smooth curves. Subsidy and
+  ceiling price words are model features, not noise.
+- **F6** The split is by time with a 14 day purge gap, never random, and
+  `05_build_examples.py` prints the proof.
+- **F7** Most windows are STABLE. Macro F1 is the metric. Plain accuracy is
+  never reported alone.
+- **F8** Training news is mostly The Star, live news is Malay Mail, Bernama and
+  FMT. That is a source shift and live results are an out of source test.
+- **F9** Plain Scrapling `Fetcher` only, robots.txt obeyed, 1 request per second,
+  everything cached. Malay Mail and FMT disallow their article paths, so their
+  bodies are never fetched; Malay Mail ships full text in the feed anyway.
+- **F10** The server reads only the processed parquet.
+- **F11** The index is a trimmed, normalised, smoothed median, not a raw price.
+- **F12** The explainer gets only computed facts and a strict schema.
+- **F13** Awareness only. Not financial advice.
+
+Two further limits found while building:
+
+- **Price controls flatten the labels.** The egg index is a flat line until
+  mid 2024 because eggs were administratively priced. A flat training period
+  drives the label threshold to zero, so a 0.5 percent floor (`MIN_THETA`)
+  applies. `05_build_examples.py` reports any product sitting on that floor,
+  because there the floor and not the data is deciding the labels.
+- **The relevance filter is contrastive, not a plain similarity.** A raw cosine
+  does not work: "Best fried chicken restaurants in Kuala Lumpur" scores *higher*
+  than "Chicken prices rise as feed costs climb". Stage two scores an article as
+  similarity to the product description minus similarity to distractor sentences.
+  On live news that keeps a paddy subsidy story (0.083) and drops a story about
+  turtles laying eggs (0.053).
+
+---
+
+## Layout
+
+```
+config/        products.yaml, sources.yaml, item_mapping.csv (provisional)
+data/raw/      downloaded files, gitignored, emptied after aggregation
+data/processed/daily prices, price index, plots, sqlite, gitignored
+models/        model.joblib and friends, written by training
+scripts/       the numbered offline pipeline, plus daily_refresh.py
+src/mymarket/  ingest, filter, prices, model, llm, store, mcp_server
+tests/         102 tests, including a synthetic end to end pipeline run
+```
+
+## Notes
+
+- `.claude/context/` holds OAC standards. They are written for TypeScript, so the
+  governing spec for this Python project is `PRD.md` plus the hard rules in
+  `AGENT_PROMPT.md`.
+- Never commit `.env` or `kaggle.json`. Both are gitignored.
+- Do not scrape Shopee or Lazada, and never enable a Scrapling stealth fetcher.

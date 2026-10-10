@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mymarket"
+version = "0.3.0"
+description = "MCP server that links Malaysian news to food staple price direction"
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mymarket"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+markers = [
+    "slow: exercises the full offline pipeline, embeds text on CPU",
+]
