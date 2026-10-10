@@ -40,6 +40,7 @@ from mymarket.filter import relevance  # noqa: E402
 from mymarket.filter.aliases import match_all as alias_match  # noqa: E402
 from mymarket.ingest import fetch_body, rss  # noqa: E402
 from mymarket.llm import explain as explainer  # noqa: E402
+from mymarket.llm import reasoning  # noqa: E402
 from mymarket.model import action  # noqa: E402
 from mymarket.model import impact  # noqa: E402
 from mymarket.model import predict as predictor  # noqa: E402
@@ -283,11 +284,21 @@ def predict_impact(
             }
 
     predictions = predictor.predict(article["title"], article["summary"], article["body"], wanted)
+    payload = [p.to_dict() for p in predictions]
+    for item in payload:
+        try:
+            context = price_index.context(item["product"], days=30).to_dict()
+        except price_index.PriceDataMissing:
+            context = None
+        item["reasoning"] = reasoning.explain_chain(
+            item["product"], item.get("direction", "UNCERTAIN"), item.get("triggers"), None, context
+        ).to_dict()
+
     return {
         "article": {"title": article["title"], "url": url},
         "horizon_days": predictor.trained_horizon_days() or config.settings().horizon_days,
         "model_version": predictor.model_version(),
-        "products": [p.to_dict() for p in predictions],
+        "products": payload,
     }
 
 
@@ -370,7 +381,15 @@ def scan_alerts(
         relevant_context = {p: contexts[p] for p in products if p in contexts}
 
         # Rank and recommend. A direction with a probability is not a decision.
+        terms = {m.product: list(m.matched_terms) for m in matches}
         for prediction in predictions:
+            prediction["reasoning"] = reasoning.explain_chain(
+                prediction["product"],
+                prediction.get("direction", "UNCERTAIN"),
+                prediction.get("triggers"),
+                terms.get(prediction["product"]),
+                relevant_context.get(prediction["product"]),
+            ).to_dict()
             rec = action.recommend(
                 prediction["product"],
                 prediction.get("direction", "UNCERTAIN"),
