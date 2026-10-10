@@ -615,10 +615,56 @@ def demo_cases(right: int = 2, wrong: int = 1) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="MyMarket MCP server")
     parser.add_argument("--http", action="store_true", help="serve over streamable HTTP")
+    parser.add_argument("--host", default="127.0.0.1", help="bind address for --http")
+    parser.add_argument("--port", type=int, default=8000, help="port for --http")
+    parser.add_argument("--path", default="/mcp", help="HTTP path for --http")
+    parser.add_argument(
+        "--allow-host",
+        action="append",
+        default=[],
+        help=(
+            "extra Host header to accept, repeatable. Needed behind a tunnel, "
+            "whose hostname is not localhost. Use '*' to accept any host."
+        ),
+    )
     args = parser.parse_args()
 
     log.info("starting MyMarket MCP server, model_trained=%s", predictor.available())
-    mcp.run(transport="streamable-http" if args.http else "stdio")
+
+    if not args.http:
+        mcp.run(transport="stdio")
+        return
+
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    # The SDK rejects requests whose Host header it does not recognise, which
+    # is correct protection against DNS rebinding but blocks every request
+    # arriving through a tunnel, since the tunnel hostname is not localhost.
+    hosts = [f"{args.host}:{args.port}", f"localhost:{args.port}", f"127.0.0.1:{args.port}"]
+    hosts += args.allow_host
+
+    if "*" in args.allow_host:
+        security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+        log.warning(
+            "DNS rebinding protection is OFF and any Host is accepted. "
+            "There is no authentication on this server: anyone who learns the "
+            "URL can call every tool. Use this for a demo, take it down after."
+        )
+    else:
+        security = TransportSecuritySettings(
+            allowed_hosts=hosts,
+            allowed_origins=["*"],
+        )
+
+    log.info("serving on http://%s:%s%s", args.host, args.port, args.path)
+    mcp.run(
+        transport="streamable-http",
+        host=args.host,
+        port=args.port,
+        streamable_http_path=args.path,
+        stateless_http=True,
+        transport_security=security,
+    )
 
 
 if __name__ == "__main__":
