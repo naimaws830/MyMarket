@@ -170,3 +170,21 @@ def test_confidence_bands_follow_measured_accuracy():
     assert band(0.60) == "medium"
     assert band(0.40) == "low"
     assert band(None) == "none"
+
+
+def test_backtest_report_uses_the_same_words_as_the_alerts(tmp_path, monkeypatch):
+    """A judge must not see UP in one tool and NEGATIVELY AFFECTED in another."""
+    import json as _json
+
+    metrics = tmp_path / "metrics.json"
+    metrics.write_text(
+        _json.dumps({"test_macro_f1": 0.33, "per_product": {"egg": {"label_counts": {"UP": 7, "STABLE": 1}}}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(server.config, "METRICS_FILE", metrics)
+
+    out = call("backtest_report")
+
+    assert set(out["per_product"]["egg"]["outcome_counts"]) == {"NEGATIVELY AFFECTED", "NEUTRAL"}
+    assert "label_counts" not in out["per_product"]["egg"]
+    assert "POSITIVELY AFFECTED" in out["label_legend"]

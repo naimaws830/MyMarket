@@ -465,6 +465,26 @@ def backtest_report(product: str | None = None) -> dict[str, Any]:
         }
 
     metrics = json.loads(config.METRICS_FILE.read_text(encoding="utf-8"))
+
+    # Metrics are computed and stored on the raw price directions, because
+    # changing them would invalidate every comparison. Translate them on the
+    # way out so a reader sees one vocabulary everywhere, not two.
+    metrics = dict(metrics)
+    metrics["label_legend"] = {
+        impact.IMPACT[d]["impact"]: impact.IMPACT[d]["meaning"]
+        for d in ("UP", "DOWN", "STABLE")
+    }
+    if isinstance(metrics.get("per_product"), dict):
+        translated = {}
+        for name, stats in metrics["per_product"].items():
+            stats = dict(stats)
+            counts = stats.pop("label_counts", {}) or {}
+            stats["outcome_counts"] = {
+                impact.IMPACT.get(k, {}).get("impact", k): v for k, v in counts.items()
+            }
+            translated[name] = stats
+        metrics["per_product"] = translated
+
     if product:
         per_product = (metrics.get("per_product") or {}).get(product)
         if per_product is None:
