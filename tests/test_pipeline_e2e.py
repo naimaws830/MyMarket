@@ -194,3 +194,50 @@ def test_offline_pipeline_produces_a_usable_model(sandbox, monkeypatch):
     assert set(out[0].probs) <= {"UP", "DOWN", "STABLE"}
     assert 0.0 <= out[0].confidence <= 1.0
     predictor._bundle.cache_clear()
+
+
+@pytest.mark.slow
+def test_merged_product_model_serves_the_same_features_it_trained_on(sandbox, monkeypatch):
+    """A model trained with products merged must be served with them merged.
+
+    If serving passed the real product name to an encoder that only ever saw
+    `all_staples`, the product block would silently become all zeros and the
+    model would be fed features it never trained on.
+    """
+    import joblib
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import OneHotEncoder
+
+    from mymarket.model import predict as predictor
+    from mymarket.model.features import MERGED_LABEL, PRODUCT_COLUMN, build_matrix
+
+    frame = pd.DataFrame(
+        {
+            "product": ["rice", "chicken", "egg", "rice"] * 5,
+            PRODUCT_COLUMN: [MERGED_LABEL] * 20,
+            "text": ["rice prices rise after export ban"] * 20,
+        }
+    )
+    vectors = np.random.default_rng(0).normal(size=(20, 384)).astype("float32")
+
+    encoder = OneHotEncoder(handle_unknown="ignore")
+    matrix = build_matrix(frame, vectors, encoder, fit=True)
+    assert encoder.categories_[0].tolist() == [MERGED_LABEL]
+
+    model = LogisticRegression(max_iter=200)
+    model.fit(matrix, ["UP", "DOWN"] * 10)
+
+    joblib.dump(
+        {"model": model, "ohe": encoder, "version": "test-merged", "merged_products": True},
+        config.MODEL_FILE,
+    )
+
+    predictor._bundle.cache_clear()
+    monkeypatch.setattr(predictor, "_embed", lambda texts: np.zeros((len(texts), 384), dtype="float32"))
+
+    out = predictor.predict("Rice prices rise", products=["rice", "chicken"])
+
+    assert [p.product for p in out] == ["rice", "chicken"]
+    assert all(p.probs for p in out)
+    predictor._bundle.cache_clear()

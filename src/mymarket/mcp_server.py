@@ -116,7 +116,15 @@ def _scan(hours: int, limit: int) -> tuple[int, list[tuple[dict[str, Any], list[
     requests instead of one per headline, which is the polite thing to do and
     also the fast one.
     """
-    articles = rss.fetch_all(hours=hours)
+    # Fetch everything the feeds currently hold and remember it, then read the
+    # window back out of the database. A feed only carries its newest items, so
+    # without this step `hours` could never reach further back than the feed.
+    fresh = rss.fetch_all()
+    with db.session() as conn:
+        db.save_articles(conn, fresh)
+        rows = db.recent_articles(conn, hours=hours)
+
+    articles = [dict(row) for row in rows]
 
     shortlist = [
         a for a in articles if alias_match(a.get("title", ""), a.get("summary", ""), a.get("body", ""))

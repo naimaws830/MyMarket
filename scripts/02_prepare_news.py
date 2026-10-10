@@ -103,7 +103,24 @@ def clean(frame: pd.DataFrame) -> pd.DataFrame:
     out = out.loc[~pd.Series(list(zip(out["published_date"].dt.date, key))).duplicated().to_numpy()]
 
     out["date"] = out["published_date"].dt.tz_localize(None).dt.normalize()
-    return out.sort_values("date", ignore_index=True)
+    return normalise_dtypes(out.sort_values("date", ignore_index=True))
+
+
+def normalise_dtypes(frame: pd.DataFrame) -> pd.DataFrame:
+    """Force mixed object columns to string so parquet can store them.
+
+    Reading a large CSV in chunks lets pandas infer a different dtype per
+    chunk, so a column such as content_id arrives as int in one chunk and str
+    in another. Parquet needs one type per column.
+    """
+    out = frame.copy()
+    for column in out.columns:
+        if out[column].dtype != "object":
+            continue
+        kinds = {type(v) for v in out[column].dropna().head(10_000)}
+        if len(kinds) > 1 or kinds == {bytes}:
+            out[column] = out[column].astype(str)
+    return out
 
 
 def report(frame: pd.DataFrame) -> None:

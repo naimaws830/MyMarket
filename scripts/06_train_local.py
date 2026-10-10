@@ -23,7 +23,11 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from mymarket import config  # noqa: E402
-from mymarket.model.features import build_matrix  # noqa: E402
+from mymarket.model.features import (  # noqa: E402
+    MERGED_LABEL,
+    PRODUCT_COLUMN,
+    build_matrix,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s", stream=sys.stderr)
 log = logging.getLogger("train")
@@ -158,10 +162,23 @@ def calibrate(estimator, x_val, y_val):
 
     try:
         model.fit(x_val, y_val)
-        return model, f"sigmoid on {len(y_val)} validation rows, cv={folds}"
     except Exception as exc:  # noqa: BLE001 - calibration is a nice to have
         log.warning("calibration failed, using the uncalibrated model: %s", exc)
         return estimator, f"failed ({type(exc).__name__}), using uncalibrated probabilities"
+
+    # Calibrating on a small, imbalanced validation set can collapse the model
+    # onto the majority class, which is worse than not calibrating at all. Keep
+    # it only if it does not hurt on the same data, and say which was chosen.
+    from sklearn.metrics import f1_score
+
+    raw_f1 = f1_score(y_val, estimator.predict(x_val), average="macro", zero_division=0)
+    cal_f1 = f1_score(y_val, model.predict(x_val), average="macro", zero_division=0)
+    if cal_f1 < raw_f1:
+        return estimator, (
+            f"rejected, it dropped validation macro F1 from {raw_f1:.3f} to {cal_f1:.3f} "
+            f"on {len(y_val)} rows, so probabilities are uncalibrated"
+        )
+    return model, f"sigmoid on {len(y_val)} validation rows, cv={folds}"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -188,6 +205,12 @@ def main(argv: list[str] | None = None) -> int:
     v0_score = train_v0(frame)
     if args.v0_only:
         return 0
+
+    merged = (
+        PRODUCT_COLUMN in frame.columns
+        and set(frame[PRODUCT_COLUMN].unique()) == {MERGED_LABEL}
+    )
+    log.info('products merged into one group: %s', merged)
 
     vectors = embeddings_for(frame, use_cache=not args.no_cache)
 
@@ -266,6 +289,7 @@ def main(argv: list[str] | None = None) -> int:
             "embedder": config.EMBED_MODEL,
             "prefix": config.EMBED_PREFIX,
             "version": f"v1-{best_name}",
+            "merged_products": merged,
         },
         config.MODEL_FILE,
     )
@@ -282,6 +306,7 @@ def main(argv: list[str] | None = None) -> int:
         {
             "generated_at": pd.Timestamp.now(tz=config.TZ).isoformat(),
             "model": f"v1-{best_name}",
+            "merged_products": merged,
             "calibration": calibration_note,
             "v0_tfidf_val_macro_f1": None if np.isnan(v0_score) else v0_score,
             "val_macro_f1": {k: float(v) for k, v in scores.items()},

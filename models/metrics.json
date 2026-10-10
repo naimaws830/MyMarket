@@ -1,0 +1,158 @@
+{
+  "generated_at": "2026-10-10T20:35:20.439424+08:00",
+  "model": "v1-logreg",
+  "merged_products": true,
+  "calibration": "rejected, it dropped validation macro F1 from 0.484 to 0.232 on 63 rows, so probabilities are uncalibrated",
+  "v0_tfidf_val_macro_f1": 0.2957296032587655,
+  "val_macro_f1": {
+    "logreg": 0.4835823218176159,
+    "lightgbm": 0.4649380129212502
+  },
+  "test_macro_f1": 0.3502645502645503,
+  "macro_f1_ci95": [
+    0.2546278548418392,
+    0.4495895043517766
+  ],
+  "baselines_test": {
+    "majority": 0.2611111111111111,
+    "momentum": 0.2134646962233169,
+    "keyword": 0.26657824933687
+  },
+  "beats_all_baselines": true,
+  "alert_precision_p70": null,
+  "n_alerts_p70": 0,
+  "n_test": 73,
+  "n_train": 378,
+  "n_val": 63,
+  "horizon_days": 28,
+  "note": "Macro F1 on a time split with a purge gap. News is a weak signal for grocery prices, so a result close to the baselines is the expected outcome, not a bug.",
+  "directional_accuracy": 0.34615384615384615,
+  "per_product": {
+    "chicken": {
+      "n_test": 19,
+      "macro_f1": 0.25833333333333336,
+      "macro_f1_ci95": [
+        0.09999999999999999,
+        0.4127723154038943
+      ],
+      "directional_accuracy": 0.3333333333333333,
+      "label_counts": {
+        "STABLE": 10,
+        "UP": 9
+      }
+    },
+    "cooking_oil": {
+      "n_test": 16,
+      "macro_f1": 0.38413547237076645,
+      "macro_f1_ci95": [
+        0.10526315789473684,
+        0.608531746031746
+      ],
+      "directional_accuracy": 0.5,
+      "label_counts": {
+        "STABLE": 12,
+        "DOWN": 3,
+        "UP": 1
+      }
+    },
+    "egg": {
+      "n_test": 13,
+      "macro_f1": 0.2619047619047619,
+      "macro_f1_ci95": [
+        0.07407407407407407,
+        0.4750297619047619
+      ],
+      "directional_accuracy": 0.4,
+      "label_counts": {
+        "UP": 10,
+        "STABLE": 3
+      }
+    },
+    "rice": {
+      "n_test": 25,
+      "macro_f1": 0.26666666666666666,
+      "macro_f1_ci95": [
+        0.21568627450980393,
+        0.3902439024390244
+      ],
+      "directional_accuracy": 0.0,
+      "label_counts": {
+        "STABLE": 22,
+        "UP": 2,
+        "DOWN": 1
+      }
+    }
+  },
+  "rolling_origin": [
+    {
+      "quarter": "2024Q3",
+      "n_train": 111,
+      "n_test": 42,
+      "macro_f1": 0.24242424242424243,
+      "majority_macro_f1": 0.44
+    },
+    {
+      "quarter": "2024Q4",
+      "n_train": 153,
+      "n_test": 43,
+      "macro_f1": 0.36321839080459767,
+      "majority_macro_f1": 0.30833333333333335
+    },
+    {
+      "quarter": "2025Q1",
+      "n_train": 196,
+      "n_test": 82,
+      "macro_f1": 0.29375696767001114,
+      "majority_macro_f1": 0.2185792349726776
+    },
+    {
+      "quarter": "2025Q2",
+      "n_train": 278,
+      "n_test": 44,
+      "macro_f1": 0.3455772113943028,
+      "majority_macro_f1": 0.1694915254237288
+    },
+    {
+      "quarter": "2025Q3",
+      "n_train": 322,
+      "n_test": 55,
+      "macro_f1": 0.3951871657754011,
+      "majority_macro_f1": 0.21951219512195122
+    },
+    {
+      "quarter": "2025Q4",
+      "n_train": 377,
+      "n_test": 21,
+      "macro_f1": 0.4719576719576719,
+      "majority_macro_f1": 0.2549019607843137
+    },
+    {
+      "quarter": "2026Q1",
+      "n_train": 398,
+      "n_test": 43,
+      "macro_f1": 0.49710187641222126,
+      "majority_macro_f1": 0.21875
+    },
+    {
+      "quarter": "2026Q2",
+      "n_train": 441,
+      "n_test": 47,
+      "macro_f1": 0.35938697318007656,
+      "majority_macro_f1": 0.24324324324324323
+    },
+    {
+      "quarter": "2026Q3",
+      "n_train": 488,
+      "n_test": 26,
+      "macro_f1": 0.3698924731182796,
+      "majority_macro_f1": 0.43478260869565216
+    }
+  ],
+  "model_version": "v1-logreg",
+  "limits": [
+    "Direction over a fixed horizon, not a price level forecast.",
+    "News is a weak signal for grocery prices. Expect modest numbers.",
+    "Price truth is PriceCatcher, a KPDN price survey, not an inflation statistic.",
+    "Labels come from a normalised index of a few mapped items per product."
+  ]
+}

@@ -147,6 +147,43 @@ def test_recent_articles_respects_the_window(conn):
     assert [r["id"] for r in recent] == ["new"]
 
 
+def test_save_articles_writes_a_batch_and_ignores_extra_keys(conn):
+    batch = [
+        {**article(id="a1", url="https://example.my/1"), "body_status": "ok"},
+        {**article(id="a2", url="https://example.my/2"), "embed_score": 0.1},
+    ]
+
+    assert db.save_articles(conn, batch) == 2
+    assert conn.execute("SELECT COUNT(*) c FROM articles").fetchone()["c"] == 2
+
+
+def test_recent_articles_accepts_an_explicit_cutoff(conn):
+    """The window must be real history, not just whatever the feed still holds."""
+    db.upsert_article(
+        conn, article(id="old", url="https://example.my/old", published_at="2026-10-01T09:00:00+08:00")
+    )
+    db.upsert_article(
+        conn, article(id="new", url="https://example.my/new", published_at="2026-10-09T09:00:00+08:00")
+    )
+
+    rows = db.recent_articles(conn, cutoff_iso="2026-10-05T00:00:00+08:00")
+
+    assert [r["id"] for r in rows] == ["new"]
+
+
+def test_recent_articles_survives_a_feed_losing_an_item(conn):
+    """An article saved yesterday is still in the window after it leaves the feed."""
+    db.save_articles(conn, [article(id="a1", published_at="2026-10-09T09:00:00+08:00")])
+
+    # A later scan brings a completely different set of articles.
+    db.save_articles(
+        conn, [article(id="a2", url="https://example.my/b", published_at="2026-10-10T09:00:00+08:00")]
+    )
+
+    rows = db.recent_articles(conn, cutoff_iso="2026-10-08T00:00:00+08:00")
+    assert {r["id"] for r in rows} == {"a1", "a2"}
+
+
 def test_deleting_an_article_cascades(conn):
     db.upsert_article(conn, article())
     db.link_product(conn, "a1", "chicken", 0.08, ["chicken"])

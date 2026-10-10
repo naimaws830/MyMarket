@@ -13,6 +13,12 @@ from mymarket.filter.aliases import build_text, find_terms
 
 TEXT_COLUMN = "text"
 
+# When products are merged into one group, every row carries this instead of its
+# own product. With only a few hundred examples there is not enough data to fit
+# per product parameters, and merging measurably beats splitting on validation.
+MERGED_LABEL = "all_staples"
+PRODUCT_COLUMN = "product_model"
+
 
 def model_text(title: str, summary: str = "", body: str = "") -> str:
     """The text the model sees, per PRD 6.3."""
@@ -46,7 +52,10 @@ def build_matrix(frame: pd.DataFrame, embeddings, ohe, fit: bool = False):
     import numpy as np
     import scipy.sparse as sp
 
-    products = frame[["product"]]
+    # product_model lets training merge products without touching `product`,
+    # which stays the real label everywhere else.
+    column = PRODUCT_COLUMN if PRODUCT_COLUMN in frame.columns else "product"
+    products = frame[[column]].rename(columns={column: "product"})
     product_block = ohe.fit_transform(products) if fit else ohe.transform(products)
 
     columns = event_columns()

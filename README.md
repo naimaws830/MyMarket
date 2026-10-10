@@ -21,13 +21,36 @@ This is an awareness tool. It is not a forecast and not financial advice.
 | Live news | 3 feeds working, about 108 unique articles per scan |
 | Relevance filter | Two stages working on live news |
 | MCP server | All 8 tools respond over stdio |
-| Trained model | **Not trained yet.** Needs the Kaggle news dump, which needs your login |
-| Tests | 102 passing |
+| Training news | 153,981 articles, 2020-10 to 2026-10, all from thestar.com.my |
+| Trained model | Trained. Test macro F1 **0.350** against a majority baseline of 0.261 |
+| Tests | 106 passing |
 
-Because there is no trained model yet, `predict_impact` and `backtest_report`
-return a documented error shape, and `scan_alerts` returns keyword plus price
-context alerts marked `UNVALIDATED`. That is deliberate: the server never
-pretends to a number it has not computed.
+### Model result, read honestly
+
+| | macro F1 |
+|---|---|
+| **MyMarket** | **0.350** |
+| majority baseline | 0.261 |
+| momentum baseline | 0.214 |
+| keyword baseline | 0.267 |
+
+95 percent interval [0.255, 0.450] on 73 test rows. It beats all three
+baselines on the point estimate, but the interval's lower bound sits on top of
+the majority baseline, so this is suggestive, not proven.
+
+The stronger evidence is the rolling origin backtest, which retrains for each
+quarter and so is not one lucky split: the model beats majority in **7 of 9
+quarters** (2024Q3 to 2026Q3).
+
+Two things to say out loud when showing this:
+
+- **Only 551 examples exist.** 153,981 articles yielded 3,470 alias matches and
+  556 that survived the relevance filter. The Star simply does not publish many
+  staple price stories. That is the binding constraint, not the model.
+- **Products are merged into one group.** Per product features lost to a single
+  merged model on validation (0.440 against 0.242), because a few hundred
+  examples cannot support per product parameters. `backtest_report` still breaks
+  results out per product, and they are weak: rice scores 0.267 on 25 test rows.
 
 ---
 
@@ -188,7 +211,26 @@ electronics was dropped in v0.3.
 - **F12** The explainer gets only computed facts and a strict schema.
 - **F13** Awareness only. Not financial advice.
 
-Two further limits found while building:
+Further limits found while building:
+
+- **Confidence barely tracks accuracy.** On validation, raising the confidence
+  threshold from 0.42 to 0.60 made accuracy *worse*, not better. So the
+  abstention mechanism is weak, `min_confidence` is set to 0.42 from the
+  validation distribution rather than the usual 0.55, and a high confidence
+  alert should not be read as a more reliable one.
+- **Calibration was rejected.** Sigmoid calibration on 63 validation rows
+  collapsed the model onto STABLE and dropped validation macro F1 from 0.484 to
+  0.232, so the shipped model is uncalibrated and `metrics.json` records that.
+  Probabilities are therefore ordinal, not literal.
+- **The test set was read twice.** Once on the first configuration and once on
+  the one selected here. Configuration selection itself was done on validation,
+  but two looks is two looks, so treat 0.350 as mildly optimistic.
+- **RSS feeds are a rolling window of about 50 items.** Asking a feed for 48
+  hours of news does not work once it has moved on. A scan now saves everything
+  it sees to SQLite and reads the window back from there, so history accumulates
+  from first run rather than being limited by the feed.
+
+Two more from the price data:
 
 - **Price controls flatten the labels.** The egg index is a flat line until
   mid 2024 because eggs were administratively priced. A flat training period

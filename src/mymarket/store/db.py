@@ -212,14 +212,55 @@ def cache_body(conn: sqlite3.Connection, url: str, body: str, status: str, when:
     )
 
 
-def recent_articles(conn: sqlite3.Connection, hours: int = 48, limit: int = 100) -> list[sqlite3.Row]:
-    """Articles published within the window, newest first."""
+def recent_articles(
+    conn: sqlite3.Connection,
+    hours: int = 48,
+    limit: int = 500,
+    cutoff_iso: str | None = None,
+) -> list[sqlite3.Row]:
+    """Articles published within the window, newest first.
+
+    An RSS feed only holds its most recent items, so asking a feed for 48 hours
+    of news is not possible once it has moved on. This table is the memory that
+    makes the window real, which is why a scan writes to it before reading.
+
+    `published_at` is always stored as ISO 8601 in the project timezone by
+    `ingest.rss`, so a single consistent offset makes a string comparison valid.
+    """
+    if cutoff_iso is None:
+        import pandas as pd
+
+        cutoff_iso = (
+            pd.Timestamp.now(tz="Asia/Kuala_Lumpur") - pd.Timedelta(hours=int(hours))
+        ).isoformat()
+
     return conn.execute(
         """
         SELECT * FROM articles
-        WHERE published_at >= datetime('now', ?)
+        WHERE published_at >= ?
         ORDER BY published_at DESC
         LIMIT ?
         """,
-        (f"-{int(hours)} hours", int(limit)),
+        (cutoff_iso, int(limit)),
     ).fetchall()
+
+
+def save_articles(conn: sqlite3.Connection, articles: list[dict[str, Any]]) -> int:
+    """Upsert a batch of articles and return how many were written."""
+    for article in articles:
+        upsert_article(conn, {k: article.get(k) for k in ARTICLE_FIELDS})
+    return len(articles)
+
+
+ARTICLE_FIELDS = (
+    "id",
+    "url",
+    "title",
+    "source",
+    "published_at",
+    "summary",
+    "body",
+    "lang",
+    "date_estimated",
+    "fetched_at",
+)

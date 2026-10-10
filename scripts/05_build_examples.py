@@ -22,7 +22,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from mymarket import config  # noqa: E402
 from mymarket.filter import relevance  # noqa: E402
 from mymarket.model import labels as lb  # noqa: E402
-from mymarket.model.features import event_frame, model_text  # noqa: E402
+from mymarket.model.features import (  # noqa: E402
+    MERGED_LABEL,
+    PRODUCT_COLUMN,
+    event_frame,
+    model_text,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s", stream=sys.stderr)
 log = logging.getLogger("build_examples")
@@ -109,6 +114,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--k", type=float, default=None, help="theta multiplier")
     parser.add_argument("--purge-days", type=int, default=None, help="purge gap, defaults to the horizon")
     parser.add_argument("--no-embed-filter", action="store_true", help="skip the embedding stage")
+    parser.add_argument(
+        "--merge-products",
+        action="store_true",
+        help="train one model over all staples instead of per product features",
+    )
     args = parser.parse_args(argv)
 
     cfg = config.settings()
@@ -169,6 +179,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     labelled = labelled.join(event_frame(labelled["text"].fillna("")))
+    labelled[PRODUCT_COLUMN] = MERGED_LABEL if args.merge_products else labelled["product"]
+    if args.merge_products:
+        log.info("products merged into one group for modelling, %s", MERGED_LABEL)
     labelled.to_parquet(config.EXAMPLES, index=False)
     log.info("wrote %s with %d rows", config.EXAMPLES.name, len(labelled))
 

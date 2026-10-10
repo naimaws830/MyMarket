@@ -15,7 +15,12 @@ from typing import Any
 
 from mymarket import config
 from mymarket.filter.aliases import find_terms
-from mymarket.model.features import build_matrix, model_text
+from mymarket.model.features import (
+    MERGED_LABEL,
+    PRODUCT_COLUMN,
+    build_matrix,
+    model_text,
+)
 
 log = logging.getLogger(__name__)
 
@@ -136,6 +141,8 @@ def predict(
 
     text = model_text(title, summary, body)
     frame = pd.DataFrame({"product": wanted, "text": [text] * len(wanted)})
+    # Serving features must be built the same way training built them.
+    frame[PRODUCT_COLUMN] = MERGED_LABEL if bundle.get("merged_products") else frame["product"]
 
     embeddings = _embed([text] * len(wanted))
     matrix = build_matrix(frame, embeddings, bundle["ohe"], fit=False)
