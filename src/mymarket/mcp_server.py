@@ -356,6 +356,9 @@ def scan_alerts(
                     "abstained": True,
                     "triggers": m.event_words,
                     "model_version": "none",
+                    "impact": "NOT ASSESSED",
+                    "meaning": "no trained model, keyword and price context match only",
+                    "confidence_band": "none",
                     "shopper_note": predictor.shopper_note("UNVALIDATED"),
                     "note": "No trained model yet. This is a keyword and price context alert only.",
                 }

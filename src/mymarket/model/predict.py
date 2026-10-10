@@ -44,8 +44,18 @@ class Prediction:
     model_version: str = "unknown"
 
     def to_dict(self) -> dict[str, Any]:
+        from mymarket.model.impact import describe
+
+        reader = describe(self.direction, self.confidence)
         return {
             "product": self.product,
+            # Reader facing. See model/impact.py for why the word never travels
+            # alone: "positive" is ambiguous without the price direction.
+            "impact": reader["impact"],
+            "meaning": reader["meaning"],
+            "confidence_band": reader["confidence_band"],
+            "confidence_note": reader["confidence_note"],
+            # Machine facing. Unchanged, and what every metric is computed on.
             "direction": self.direction,
             "probs": self.probs,
             "confidence": self.confidence,

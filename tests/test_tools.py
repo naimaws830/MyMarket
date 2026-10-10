@@ -145,3 +145,27 @@ def test_tool_has_a_docstring_for_the_client(name):
     func = getattr(tool, "fn", None) or getattr(tool, "func", None) or tool
 
     assert func.__doc__ and len(func.__doc__.strip()) > 40, f"{name} needs a usable description"
+
+
+def test_impact_labels_never_travel_without_their_price_direction():
+    """PRD F1: "positive" is ambiguous unless the price meaning rides with it."""
+    from mymarket.model.impact import IMPACT, describe
+
+    for direction, spec in IMPACT.items():
+        out = describe(direction, 0.8)
+        assert out["price_direction"] == spec["price_direction"]
+        assert out["meaning"], f"{direction} has no plain meaning"
+
+    assert describe("DOWN", 0.9)["impact"] == "POSITIVELY AFFECTED"
+    assert describe("UP", 0.9)["impact"] == "NEGATIVELY AFFECTED"
+    assert describe("STABLE", 0.9)["impact"] == "NEUTRAL"
+
+
+def test_confidence_bands_follow_measured_accuracy():
+    from mymarket.model.impact import band
+
+    assert band(0.85) == "high"
+    assert band(0.70) == "high"
+    assert band(0.60) == "medium"
+    assert band(0.40) == "low"
+    assert band(None) == "none"
