@@ -11,6 +11,13 @@ a ranked alert with a recommended action.
 **Price source:** PriceCatcher (KPDN via data.gov.my), daily, CC BY 4.0
 **Interface:** Model Context Protocol, 9 tools, stdio and HTTP
 
+## Links
+
+| | |
+|---|---|
+| Live site | https://my-marketprice.netlify.app/ |
+| Presentation | https://canva.link/led96aryulaayag |
+
 MyMarket is an awareness tool, not a price forecast, and not financial advice.
 Alerts carry a disclaimer, the model abstains below a confidence floor, and
 accuracy is reported alongside the baselines it is measured against.
