@@ -61,7 +61,51 @@ domains:
     label: Food Staples
     price_source: pricecatcher
     frequency: daily
-    requires_price_cue: false
+
+    # The PRD applied a price cue rule to electronics only, on the grounds that
+    # most phone news is launches and reviews. The M5 audits showed food needs
+    # it just as badly: The Star's food coverage is dominated by recipes,
+    # buffets and restaurant pieces that mention these words constantly.
+    #
+    # Measured on the held out teammate audit set:
+    #   alias only                 precision 0.283
+    #   embedding only, 0.015      precision 0.552
+    #   price cue in title         precision 0.800
+    #   price cue AND embedding    precision 0.875
+    #
+    # The cue costs recall, so it buys quality at the price of volume. For a
+    # product whose whole claim is that NEWS moves prices, training on articles
+    # that are not about prices teaches the model nothing.
+    requires_price_cue: true
+    price_cue_words:
+      - price
+      - prices
+      - pricing
+      - harga
+      - cost
+      - costs
+      - cheaper
+      - expensive
+      - subsidy
+      - subsidi
+      - subsidised
+      - subsidized
+      - tariff
+      - levy
+      - tax
+      - SST
+      - shortage
+      - supply
+      - import
+      - export
+      - inflation
+      - ceiling
+      - price control
+      - kawalan harga
+      - hike
+      - profiteering
+      - stockpile
+      - glut
 
     # Event words are model features, not relevance filters. PRD F5.
     event_words:

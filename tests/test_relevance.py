@@ -84,3 +84,38 @@ def test_match_carries_event_words_through(test_settings, monkeypatch):
     matches = relevance.match_article("Rice subsidy stays after flood damage")
 
     assert set(matches[0].event_words) == {"subsidy", "flood"}
+
+
+def test_price_cue_rule_rejects_a_lifestyle_article(test_settings, monkeypatch):
+    """The audits showed food coverage is dominated by recipes and buffets."""
+    stub_scores(monkeypatch, {"rice": 0.09})
+
+    assert relevance.match_article("Curry laksa with a modern twist", require_price_cue=True) == []
+
+
+def test_price_cue_rule_keeps_a_real_price_story(test_settings, monkeypatch):
+    stub_scores(monkeypatch, {"rice": 0.09})
+
+    matches = relevance.match_article("Rice prices climb after export ban", require_price_cue=True)
+
+    assert [m.product for m in matches] == ["rice"]
+
+
+def test_price_cue_looks_only_at_headline_and_summary(test_settings):
+    """A review mentions cost in paragraph nine; a price story says so up front."""
+    body = "The dish is excellent. The cost of chicken has risen, the owner said."
+
+    assert relevance.match_article("Fiery comfort of creamy chicken", "", body, require_price_cue=True) == []
+
+
+def test_both_filter_stages_read_the_same_settings(test_settings, monkeypatch):
+    """A regression guard.
+
+    price_cues_in once imported `settings` directly at module load, so it kept
+    reading the real config while match_article read the patched one. The two
+    stages of one filter must never disagree about their configuration.
+    """
+    stub_scores(monkeypatch, {"rice": 0.09})
+
+    assert relevance.price_cues_in("Rice prices climb") == ["prices"]
+    assert relevance.price_cues_in("Curry laksa with a twist") == []

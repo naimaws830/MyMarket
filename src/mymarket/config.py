@@ -92,6 +92,8 @@ class Settings:
     body_chars: int
     min_confidence: float
     distractor_sentences: list[str] = field(default_factory=list)
+    requires_price_cue: bool = False
+    price_cue_words: list[str] = field(default_factory=list)
 
     @property
     def product_keys(self) -> list[str]:
@@ -189,6 +191,8 @@ def settings() -> Settings:
         body_chars=int(flt.get("body_chars", 1500)),
         min_confidence=_env_float("MYMARKET_MIN_CONFIDENCE", 0.55),
         distractor_sentences=list(flt.get("distractor_sentences") or []),
+        requires_price_cue=bool(domain.get("requires_price_cue", False)),
+        price_cue_words=list(domain.get("price_cue_words") or []),
     )
 
 

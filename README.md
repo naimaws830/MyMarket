@@ -29,32 +29,52 @@ This is an awareness tool. It is not a forecast and not financial advice.
 
 | | macro F1 |
 |---|---|
-| **MyMarket** | **0.406** |
-| momentum baseline | 0.392 |
-| keyword baseline | 0.245 |
-| majority baseline | 0.230 |
+| **MyMarket** | **0.333** |
+| momentum baseline | 0.315 |
+| keyword baseline | 0.310 |
+| majority baseline | 0.263 |
 
-95 percent interval [0.323, 0.487] on 142 test rows. The model clears majority
-and keyword comfortably. It is **0.014 ahead of momentum, which is inside the
-noise**: call it a tie that is trending the right way, not a win. Knowing how
-the price moved over the previous 28 days remains about as informative as
-reading the news.
+95 percent interval [0.218, 0.449] on 40 test rows. It is ahead of all three
+baselines but the margins are small and the interval is wide. Rolling origin
+beats majority in 6 of 9 quarters.
 
-Rolling origin, which retrains per quarter, beats majority in 8 of 10 quarters.
+**Alerts at confidence 0.70 or above: 20, precision 0.700.** This is the PRD
+metric that matters most for an alerting product, and it is the reason this
+configuration was chosen over a higher scoring one. See below.
 
-Per product, directional accuracy on the rows that actually moved: cooking oil
-0.75 (only 10 test rows), chicken 0.64, egg 0.48, **rice 0.00**. Rice is the
-product with the most examples and the clearest real event in the price data,
-and the model cannot call its direction at all.
+### Why a lower macro F1 was the right choice
 
-**Caveat that matters:** the test set has now been evaluated four times across
-four configurations. Configuration choices were made on validation, but four
-looks is four looks, so 0.406 is optimistic by an unknown margin. The rolling
-origin numbers are the more trustworthy ones.
+An earlier configuration, without the price cue rule, scored macro F1 0.406 on
+1,074 examples. It was discarded. Side by side:
 
-**What to say in a demo:** present this as a news context layer, not a
-predictor. The defensible value is the pipeline, the measured relevance filter
-and the official price context attached to each story.
+| | no price cue | with price cue |
+|---|---|---|
+| training examples | 1,074 | 305 |
+| macro F1 | 0.406 | 0.333 |
+| alerts at p >= 0.70 | **0** | **20** |
+| alert precision | not measurable | **0.700** |
+
+The higher scoring model never produced a single confident prediction, so as an
+alert product it did nothing. Worse, inspecting its training rows showed what
+it was actually learning. Real examples it was trained on:
+
+- "Labuan's tourism potential largely untapped" -> rice, UP
+- "Yummy Korean delights for sharing" -> chicken, UP
+- "Curry laksa with a modern twist hits the market" -> chicken, UP
+
+For an article like that the label depends only on the date, so the model could
+only learn seasonality. That explains why it merely tied the momentum baseline:
+it had partly become a momentum model wearing a text model's clothes.
+
+The price cue rule requires a word such as price, harga, subsidy, tariff,
+shortage or inflation in the headline or summary. On the held out teammate
+audit it lifts precision from 0.283 (alias only) to 0.800, and to 0.875 when
+combined with the embedding score. The PRD applied this rule to electronics
+only; the audits showed food needs it just as badly.
+
+The cost is honest and real: 305 examples instead of 1,074, and a wider
+confidence interval. A smaller set of articles that are genuinely about prices
+beats a larger set that is mostly recipes.
 
 ### Why the numbers are small
 

@@ -40,6 +40,8 @@ def make_settings(**overrides) -> config.Settings:
         body_chars=1500,
         min_confidence=0.55,
         distractor_sentences=["A recipe or a restaurant review."],
+        requires_price_cue=False,
+        price_cue_words=["price", "prices", "subsidy", "shortage", "cost"],
     )
     base.update(overrides)
     return config.Settings(**base)

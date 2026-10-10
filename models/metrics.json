@@ -1,163 +1,152 @@
 {
-  "generated_at": "2026-10-11T00:28:48.355635+08:00",
-  "model": "v1-logreg",
+  "generated_at": "2026-10-11T00:37:25.958927+08:00",
+  "model": "v1-lightgbm",
   "merged_products": true,
-  "calibration": "rejected, it dropped validation macro F1 from 0.348 to 0.259 on 124 rows, so probabilities are uncalibrated",
-  "v0_tfidf_val_macro_f1": 0.35256464011180993,
+  "calibration": "rejected, it dropped validation macro F1 from 0.466 to 0.403 on 35 rows, so probabilities are uncalibrated",
+  "v0_tfidf_val_macro_f1": 0.3348837209302326,
   "val_macro_f1": {
-    "logreg": 0.3479170522073489,
-    "lightgbm": 0.3252695733708392
+    "logreg": 0.3028322440087146,
+    "lightgbm": 0.46563240680887746
   },
-  "test_macro_f1": 0.40629824815871335,
+  "test_macro_f1": 0.3333333333333333,
   "macro_f1_ci95": [
-    0.32259140538230796,
-    0.48672763629306476
+    0.21766914038342608,
+    0.44933612858141164
   ],
   "baselines_test": {
-    "majority": 0.2304147465437788,
-    "momentum": 0.3917838175570134,
-    "keyword": 0.24519125683060108
+    "majority": 0.2626262626262626,
+    "momentum": 0.3153439153439153,
+    "keyword": 0.3099141295862607
   },
   "beats_all_baselines": true,
-  "alert_precision_p70": null,
-  "n_alerts_p70": 0,
-  "n_test": 142,
-  "n_train": 746,
-  "n_val": 124,
+  "alert_precision_p70": 0.7,
+  "n_alerts_p70": 20,
+  "n_test": 40,
+  "n_train": 210,
+  "n_val": 35,
   "horizon_days": 28,
   "note": "Macro F1 on a time split with a purge gap. News is a weak signal for grocery prices, so a result close to the baselines is the expected outcome, not a bug.",
-  "directional_accuracy": 0.5074626865671642,
+  "directional_accuracy": 0.21428571428571427,
   "per_product": {
     "chicken": {
-      "n_test": 52,
-      "macro_f1": 0.2965034965034965,
+      "n_test": 12,
+      "macro_f1": 0.42857142857142855,
       "macro_f1_ci95": [
-        0.2069838256773225,
-        0.4002683868537527
+        0.19047619047619047,
+        0.6447619047619045
       ],
-      "directional_accuracy": 0.64,
+      "directional_accuracy": 0.5,
       "label_counts": {
-        "STABLE": 27,
-        "UP": 22,
-        "DOWN": 3
+        "STABLE": 8,
+        "UP": 4
       }
     },
     "cooking_oil": {
-      "n_test": 10,
-      "macro_f1": 0.5259259259259259,
+      "n_test": 8,
+      "macro_f1": 0.25641025641025644,
       "macro_f1_ci95": [
-        0.15384615384615385,
-        0.8023809523809523
+        0.13333333333333333,
+        0.4666666666666667
       ],
-      "directional_accuracy": 0.75,
+      "directional_accuracy": 0.0,
       "label_counts": {
-        "STABLE": 6,
-        "DOWN": 3,
+        "STABLE": 5,
+        "DOWN": 2,
         "UP": 1
       }
     },
     "egg": {
-      "n_test": 36,
-      "macro_f1": 0.38734468146232853,
+      "n_test": 8,
+      "macro_f1": 0.08333333333333333,
       "macro_f1_ci95": [
-        0.21902336544373846,
-        0.5462519936204147
+        0.0,
+        0.19999999999999998
       ],
-      "directional_accuracy": 0.4838709677419355,
+      "directional_accuracy": 0.14285714285714285,
       "label_counts": {
-        "UP": 26,
-        "DOWN": 5,
-        "STABLE": 5
+        "UP": 7,
+        "STABLE": 1
       }
     },
     "rice": {
-      "n_test": 44,
-      "macro_f1": 0.22564102564102564,
+      "n_test": 12,
+      "macro_f1": 0.24561403508771928,
       "macro_f1_ci95": [
-        0.1807909604519774,
-        0.2648401826484018
+        0.16666666666666666,
+        0.45454545454545453
       ],
-      "directional_accuracy": 0.0,
+      "directional_accuracy": null,
       "label_counts": {
-        "STABLE": 37,
-        "DOWN": 5,
-        "UP": 2
+        "STABLE": 12
       }
     }
   },
   "rolling_origin": [
     {
-      "quarter": "2024Q2",
-      "n_train": 93,
-      "n_test": 128,
-      "macro_f1": 0.27628522300593045,
-      "majority_macro_f1": 0.21754385964912282
-    },
-    {
       "quarter": "2024Q3",
-      "n_train": 221,
-      "n_test": 69,
-      "macro_f1": 0.19130434782608696,
-      "majority_macro_f1": 0.2768361581920904
+      "n_train": 61,
+      "n_test": 14,
+      "macro_f1": 0.25925925925925924,
+      "majority_macro_f1": 0.36363636363636365
     },
     {
       "quarter": "2024Q4",
-      "n_train": 290,
-      "n_test": 99,
-      "macro_f1": 0.258295380611581,
-      "majority_macro_f1": 0.28735632183908044
+      "n_train": 75,
+      "n_test": 25,
+      "macro_f1": 0.33053221288515405,
+      "majority_macro_f1": 0.2962962962962963
     },
     {
       "quarter": "2025Q1",
-      "n_train": 389,
-      "n_test": 156,
-      "macro_f1": 0.41087546129562935,
-      "majority_macro_f1": 0.20648967551622419
+      "n_train": 100,
+      "n_test": 40,
+      "macro_f1": 0.35068072024593766,
+      "majority_macro_f1": 0.1728395061728395
     },
     {
       "quarter": "2025Q2",
-      "n_train": 545,
-      "n_test": 94,
-      "macro_f1": 0.22200140247468916,
-      "majority_macro_f1": 0.2158273381294964
+      "n_train": 140,
+      "n_test": 31,
+      "macro_f1": 0.23529411764705885,
+      "majority_macro_f1": 0.25333333333333335
     },
     {
       "quarter": "2025Q3",
-      "n_train": 639,
-      "n_test": 107,
-      "macro_f1": 0.38877395957041977,
-      "majority_macro_f1": 0.23952095808383234
+      "n_train": 171,
+      "n_test": 39,
+      "macro_f1": 0.42328042328042326,
+      "majority_macro_f1": 0.20238095238095236
     },
     {
       "quarter": "2025Q4",
-      "n_train": 746,
-      "n_test": 51,
-      "macro_f1": 0.34392764857881136,
-      "majority_macro_f1": 0.19444444444444445
+      "n_train": 210,
+      "n_test": 14,
+      "macro_f1": 0.4225589225589226,
+      "majority_macro_f1": 0.17543859649122806
     },
     {
       "quarter": "2026Q1",
-      "n_train": 797,
-      "n_test": 75,
-      "macro_f1": 0.3970517287590458,
-      "majority_macro_f1": 0.224188790560472
+      "n_train": 224,
+      "n_test": 21,
+      "macro_f1": 0.16666666666666666,
+      "majority_macro_f1": 0.19999999999999998
     },
     {
       "quarter": "2026Q2",
-      "n_train": 872,
-      "n_test": 79,
-      "macro_f1": 0.31295744104093254,
-      "majority_macro_f1": 0.19642857142857142
+      "n_train": 245,
+      "n_test": 20,
+      "macro_f1": 0.2869592281356987,
+      "majority_macro_f1": 0.23655913978494625
     },
     {
       "quarter": "2026Q3",
-      "n_train": 951,
-      "n_test": 61,
-      "macro_f1": 0.3974358974358974,
-      "majority_macro_f1": 0.27184466019417475
+      "n_train": 265,
+      "n_test": 20,
+      "macro_f1": 0.24691358024691357,
+      "majority_macro_f1": 0.42857142857142855
     }
   ],
-  "model_version": "v1-logreg",
+  "model_version": "v1-lightgbm",
   "limits": [
     "Direction over a fixed horizon, not a price level forecast.",
     "News is a weak signal for grocery prices. Expect modest numbers.",
