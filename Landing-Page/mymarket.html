@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M4 12h40l16 20-16 20H4z' fill='%23161616'/%3E%3Cpath d='M10 42V26M10 32C10 25 20 25 20 32V42M20 32C20 25 30 25 30 32V42' fill='none' stroke='%23FF6B00' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='50' cy='32' r='4' fill='%23FF6B00'/%3E%3C/svg%3E">
+<title>MyMarket: price alerts from Malaysian food news</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --orange:#FF6B00;
+  --orange-deep:#C2410C;
+  --orange-pale:#FFF1E6;
+  --ink:#161616;
+  --mute:#5B5B5B;
+  --line:#E4E4E4;
+  --white:#FFFFFF;
+  --sans:"Bricolage Grotesque","Trebuchet MS",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"DM Mono",ui-monospace,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-behavior:smooth;scroll-padding-top:calc(76px + env(safe-area-inset-top,0px));background:var(--white)}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--white);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3,p{margin:0}
+a{color:inherit}
+code{font-family:var(--mono);font-size:.9em}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+
+.wrap{max-width:1180px;margin:0 auto;padding-inline:clamp(20px,4vw,44px)}
+.sec{padding-block:clamp(64px,9vw,112px)}
+.on-orange{background:var(--orange)}
+.on-pale{background:var(--orange-pale)}
+h2{font-size:clamp(2rem,4.2vw,3.3rem);font-weight:800;line-height:1.02;letter-spacing:-.025em;font-variation-settings:"opsz" 72}
+.lead{font-size:1.15rem;max-width:56ch;color:var(--mute)}
+.on-orange .lead{color:var(--ink)}
+
+/* nav */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--white);border-bottom:2px solid var(--ink)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:68px;gap:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.3rem;letter-spacing:-.02em;text-decoration:none}
+.nav ul{display:flex;gap:28px;list-style:none;margin:0;padding:0}
+.nav ul a{text-decoration:none;font-weight:500}
+.nav ul a:hover{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:5px;text-decoration-color:var(--orange)}
+.nav-actions{display:flex;align-items:center;gap:12px}
+.nav .menu-btn{display:none;min-width:96px}
+.btn{--btn-h:48px;display:inline-flex;align-items:center;justify-content:center;gap:.35em;min-height:var(--btn-h);padding:0 clamp(16px,2.4vw,24px);border-radius:999px;border:2px solid var(--ink);font-weight:700;font-size:1rem;line-height:1.1;white-space:nowrap;text-align:center;text-decoration:none;color:var(--ink);background:var(--white);box-shadow:4px 4px 0 var(--ink);transition:transform .12s,box-shadow .12s;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.btn:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
+.btn:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--ink)}
+.btn-orange{background:var(--orange)}
+.btn-sm{flex:none}
+
+/* hero */
+.hero{padding-block:clamp(48px,7vw,96px) clamp(56px,8vw,104px)}
+.hero .wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(32px,5vw,72px);align-items:center}
+.hero h1{font-size:clamp(2.9rem,6.8vw,5.8rem);font-weight:800;line-height:.96;letter-spacing:-.035em;font-variation-settings:"opsz" 96}
+.hero .lead{margin-top:24px;font-size:1.25rem;color:var(--ink)}
+.cta-row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:16px;width:max-content;max-width:100%;margin-top:34px}
+.fine{margin-top:22px;font-size:.95rem;color:var(--mute)}
+
+.stage{position:relative;background:var(--orange);border-radius:40px;padding:48px clamp(20px,5vw,48px) 56px}
+.receipt-wrap{position:relative;max-width:360px;margin:0 auto;transform:rotate(1.2deg)}
+.receipt{background:var(--white);color:var(--ink);font-family:var(--mono);font-size:13px;line-height:1.55;padding:22px 20px 38px;
+  -webkit-mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/16px 100%;
+  mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/16px 100%;
+  animation:print 1.5s steps(30,end) .25s backwards}
+.r-head{text-align:center;font-weight:500;font-size:15px}
+.r-sub{text-align:center;color:var(--mute);font-size:12px}
+.r-block{border-top:1px dashed #8d8d8d;margin-top:12px;padding-top:12px}
+.r-row{display:flex;justify-content:space-between;gap:14px}
+.r-row span:last-child{text-align:right}
+.r-article{font-family:var(--sans);font-size:15px;font-weight:700;line-height:1.3;margin-top:4px}
+.r-dir{font-size:26px;font-weight:500}
+.bar{height:8px;background:#ECECEC;border-radius:99px;overflow:hidden;margin:3px 0 9px}
+.bar i{display:block;height:100%;width:calc(var(--p) * 1%);background:#B5B5B5;border-radius:inherit;animation:fill .9s cubic-bezier(.2,.8,.2,1) 1.6s backwards}
+.bar.top i{background:var(--orange)}
+.r-why{font-family:var(--sans);font-size:14px;line-height:1.45}
+.r-foot{text-align:center;color:var(--mute);font-size:12px}
+.sticker{position:absolute;top:-30px;right:-26px;width:100px;height:100px;border-radius:50%;background:var(--ink);color:var(--orange);display:grid;place-items:center;text-align:center;font-weight:800;font-size:15px;line-height:1.1;transform:rotate(12deg);padding:12px;z-index:2}
+@keyframes print{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes fill{from{width:0}}
+
+/* shelf */
+.shelf-head{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:40px}
+.tags{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.tag{position:relative;border:2px solid var(--ink);border-radius:8px 30px 30px 8px;padding:22px 20px 22px 58px;background:var(--white)}
+.tag::before{content:"";position:absolute;left:20px;top:50%;width:18px;height:18px;margin-top:-9px;border-radius:50%;border:2px solid var(--ink);background:var(--orange-pale)}
+.tag h3{font-size:1.65rem;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.tag p{color:var(--mute);font-size:.95rem;margin-top:4px}
+.tag.pending{border-style:dashed;background:transparent}
+.tag.pending h3{font-size:1.25rem}
+
+/* how it works */
+.how h2{max-width:16ch}
+.steps{margin-top:48px}
+.step{display:grid;grid-template-columns:96px minmax(0,1fr) minmax(0,1.4fr);gap:24px;align-items:baseline;padding-block:28px;border-top:2px solid var(--ink)}
+.step:last-child{border-bottom:2px solid var(--ink)}
+.step .n{font-size:3.4rem;font-weight:800;line-height:1;letter-spacing:-.04em}
+.step h3{font-size:1.65rem;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.step p{font-size:1.08rem}
+
+/* ask */
+.ask .wrap{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(32px,6vw,80px);align-items:start}
+.ask-intro{position:sticky;top:calc(96px + env(safe-area-inset-top,0px))}
+.ask-intro .lead{margin-top:20px}
+.chat{display:grid;gap:12px}
+.q{justify-self:end;background:var(--orange);color:#000;padding:16px 22px;border-radius:26px 26px 6px 26px;font-size:1.2rem;font-weight:600;line-height:1.3;max-width:520px}
+.used{justify-self:end;font-family:var(--mono);font-size:13px;color:var(--mute);margin-bottom:18px}
+.tools{margin-top:clamp(56px,8vw,96px)}
+.tools h3{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-bottom:18px}
+.tool-list{display:grid;grid-template-columns:1fr 1fr;column-gap:48px}
+.tool{display:grid;grid-template-columns:170px minmax(0,1fr);gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+.tool code{font-weight:500}
+.tool span{color:var(--mute)}
+
+/* honest */
+.honest .wrap{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:clamp(32px,6vw,80px);align-items:start}
+.honest-intro{position:sticky;top:calc(96px + env(safe-area-inset-top,0px))}
+.honest-intro .lead{margin-top:20px;color:var(--ink)}
+.status{margin-top:30px;border:2px dashed var(--orange-deep);border-radius:14px;padding:18px 20px;font-size:.98rem}
+.promise{border-top:2px solid var(--ink);padding-block:22px}
+.promise:last-child{border-bottom:2px solid var(--ink)}
+.promise h3{font-size:1.35rem;font-weight:800;letter-spacing:-.015em;line-height:1.2}
+.promise p{margin-top:6px;color:var(--mute);max-width:56ch}
+
+/* connect */
+.connect-head{margin-bottom:44px}
+.connect-head .lead{margin-top:18px}
+.cs{display:grid;grid-template-columns:56px minmax(0,1fr);gap:20px;margin-bottom:36px}
+.cs .num{width:44px;height:44px;border-radius:50%;background:var(--orange);border:2px solid var(--ink);display:grid;place-items:center;font-weight:800;font-size:1.15rem}
+.cs h3{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;line-height:1.2;margin-top:6px}
+.cs p{color:var(--mute);margin-top:8px;max-width:64ch}
+.cs p code{color:var(--ink);overflow-wrap:anywhere}
+.code{position:relative;margin-top:16px}
+.code pre{margin:0;background:var(--ink);color:#fff;border-radius:16px;padding:22px 22px 22px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.65}
+.copy{position:absolute;top:10px;right:10px;display:inline-flex;align-items:center;justify-content:center;min-height:40px;min-width:84px;background:var(--orange);color:#000;border:0;border-radius:99px;padding:0 16px;font-family:var(--sans);font-weight:700;font-size:.9rem;white-space:nowrap;cursor:pointer;touch-action:manipulation}
+.copy:hover{background:#fff}
+.copy:focus-visible{outline-color:#fff}
+.code pre{padding-right:112px;min-height:60px}
+
+/* footer */
+footer{background:var(--orange);padding-block:48px calc(48px + env(safe-area-inset-bottom,0px))}
+footer .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:32px}
+.logo{display:block;height:38px;width:auto;aspect-ratio:580/128}
+.logo-lg{height:46px}
+footer .brand{align-self:start}
+footer p{max-width:70ch;font-size:.98rem}
+footer p + p{margin-top:10px}
+
+@media (max-width:1040px){
+  .nav .menu-btn{display:inline-flex}
+  .nav ul{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;gap:0;background:var(--white);border-bottom:2px solid var(--ink);padding:8px clamp(20px,4vw,44px) 16px}
+  .nav.open ul{display:flex}
+  .nav ul a{display:flex;align-items:center;min-height:48px;font-size:1.1rem}
+  .nav ul li + li{border-top:1px solid var(--line)}
+}
+@media (max-width:900px){
+  .tags{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hero .wrap,.ask .wrap,.honest .wrap,footer .wrap{grid-template-columns:minmax(0,1fr)}
+  .ask-intro,.honest-intro{position:static}
+  .step{grid-template-columns:64px minmax(0,1fr);row-gap:8px}
+  .step p{grid-column:2}
+  .step .n{font-size:2.6rem;grid-row:span 2}
+  .tool-list{grid-template-columns:1fr}
+  .q,.used{justify-self:start}
+  .stage{margin-top:12px}
+}
+@media (max-width:600px){
+  .cta-row{grid-auto-flow:row;width:100%;max-width:420px}
+  .code pre{padding-top:60px;padding-right:22px}
+}
+@media (max-width:420px){
+  .tags{grid-template-columns:minmax(0,1fr)}
+  .nav .nav-cta{display:none}
+}
+@media (max-width:520px){
+  .tool{grid-template-columns:1fr;gap:2px}
+  .cs{grid-template-columns:44px minmax(0,1fr);gap:14px}
+  .cs .code{margin-left:-58px}
+  .sticker{right:-10px;width:88px;height:88px;font-size:13px}
+  .logo{height:30px}
+  .logo-lg{height:40px}
+  .btn{font-size:.95rem}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .receipt,.bar i{animation:none}
+  .btn{transition:none}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><g id="logo-tag">
+<path d="M24 16H520L584 80L520 144H24Q4 144 4 124V36Q4 16 24 16Z" fill="#161616"/>
+<circle cx="548" cy="80" r="10" fill="#FF6B00"/>
+<g transform="translate(0,-2)" fill="none" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+<g stroke="#FF6B00">
+<path transform="translate(36,0)" d="M0 100V64M0 76C0 58 28 58 28 76V100M28 76C28 58 56 58 56 76V100"/>
+<path transform="translate(114,0)" d="M0 62L24.5 99M38 62L14 128"/>
+</g>
+<g stroke="#FFFFFF">
+<path transform="translate(174,0)" d="M0 100V64M0 76C0 58 28 58 28 76V100M28 76C28 58 56 58 56 76V100"/>
+<path transform="translate(252,0)" d="M1 81a19 19 0 1 0 38 0a19 19 0 1 0 -38 0M39 62V100"/>
+<path transform="translate(314,0)" d="M0 62V100M0 82C0 66 12 62 26 63"/>
+<path transform="translate(362,0)" d="M0 36V100M30 62L0 86M10 78L30 100"/>
+<path transform="translate(414,0)" d="M2 82H38C38 66 28 62 20 62C10 62 2 70 2 81C2 92 10 100 20 100C28 100 34 97 38 92"/>
+<path transform="translate(474,0)" d="M12 44V90C12 97 16 100 24 100M0 64H26"/>
+</g>
+</g>
+</g></defs></svg>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="mymarket home">
+      <svg class="logo" viewBox="4 16 580 128" role="img" aria-label="mymarket"><use href="#logo-tag"/></svg>
+    </a>
+    <ul id="nav-links">
+      <li><a href="#shelf">What it tracks</a></li>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#ask">What you can ask</a></li>
+      <li><a href="#honest">Honesty</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a class="btn btn-orange btn-sm nav-cta" href="#connect">Connect to Claude</a>
+      <button class="btn btn-sm menu-btn" type="button" aria-expanded="false" aria-controls="nav-links">Menu</button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <h1>Will chicken get pricier soon?</h1>
+      <p class="lead">MyMarket reads live Malaysian news, spots stories about rice, eggs, cooking oil and chicken, and tells you whether prices point up, down or stay put over the next 28 days, and what to do about it. Then it checks itself against official price data.</p>
+      <div class="cta-row">
+        <a class="btn btn-orange" href="#connect">Connect to Claude</a>
+        <a class="btn" href="#how">See how it works</a>
+      </div>
+      <p class="fine">Free to run. Works with Claude Desktop and MCP Inspector.</p>
+    </div>
+
+    <div class="stage">
+      <div class="receipt-wrap">
+        <div class="sticker" aria-hidden="true">Price likely up</div>
+        <article class="receipt" aria-label="Example alert, illustrative sample">
+          <p class="r-head">MyMarket alert</p>
+          <p class="r-sub">Illustrative sample, not live news</p>
+
+          <div class="r-block">
+            <p class="r-sub" style="text-align:left">News</p>
+            <p class="r-article">Poultry breeders warn of feed shortage ahead of festive season</p>
+          </div>
+
+          <div class="r-block">
+            <div class="r-row"><span>Product</span><span>Chicken</span></div>
+            <div class="r-row"><span>Direction</span><span class="r-dir">UP</span></div>
+            <div class="r-row"><span>For buyers</span><span>Negatively affected</span></div>
+            <div class="r-row"><span>Priority</span><span>WATCH</span></div>
+          </div>
+
+          <div class="r-block">
+            <div class="r-row"><span>Chance up</span><span>68%</span></div>
+            <div class="bar top"><i style="--p:68"></i></div>
+            <div class="r-row"><span>Chance stable</span><span>25%</span></div>
+            <div class="bar"><i style="--p:25"></i></div>
+            <div class="r-row"><span>Chance down</span><span>7%</span></div>
+            <div class="bar"><i style="--p:7"></i></div>
+          </div>
+
+          <div class="r-block">
+            <div class="r-row"><span>Triggers</span><span>feed cost, shortage</span></div>
+            <div class="r-row"><span>Price, 7 days</span><span>+1.2%</span></div>
+            <div class="r-row"><span>Price, 30 days</span><span>+3.4%</span></div>
+            <div class="r-row"><span>Data as of</span><span>8 Oct 2026</span></div>
+          </div>
+
+          <div class="r-block">
+            <p class="r-why">Feed is the biggest cost in raising poultry, so farmers pass it on. Official prices already agree (+1.2% over 7 days). Changes usually reach the shelf in 1 to 2 weeks. Confidence is 68%: above the 55% bar, so it speaks, but below the 70% band needed for ACT NOW, so it stays at WATCH.</p>
+          </div>
+
+          <div class="r-block">
+            <p class="r-foot">Awareness only. Not financial advice.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec on-pale" id="shelf">
+  <div class="wrap">
+    <div class="shelf-head">
+      <h2>On the shelf today</h2>
+      <p class="lead">Four staple foods, priced from PriceCatcher, the government's daily survey of shop prices. It understands English and Malay names.</p>
+    </div>
+    <div class="tags">
+      <div class="tag"><h3>Rice</h3><p>also beras, padi</p></div>
+      <div class="tag"><h3>Eggs</h3><p>also telur</p></div>
+      <div class="tag"><h3>Cooking oil</h3><p>also minyak masak</p></div>
+      <div class="tag"><h3>Chicken</h3><p>also ayam</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec on-orange how" id="how">
+  <div class="wrap">
+    <h2>How a headline becomes an alert</h2>
+    <div class="steps">
+      <div class="step">
+        <span class="n">1</span>
+        <h3>Reads the news</h3>
+        <p>Pulls fresh stories from live Malaysian feeds: Malay Mail, Bernama and Free Malaysia Today. It fetches each article's text at one request per second, following each site's robots.txt.</p>
+      </div>
+      <div class="step">
+        <span class="n">2</span>
+        <h3>Finds the food</h3>
+        <p>Three checks, cheapest first: English and Malay names like ayam and telur, a price word such as harga, subsidy or shortage in the headline, then a meaning check, so a chicken rice review isn't read as a poultry price story.</p>
+      </div>
+      <div class="step">
+        <span class="n">3</span>
+        <h3>Calls the direction</h3>
+        <p>A trained model gives the chance the shelf price goes up, down or stays stable over the next 28 days. If it's under 55% sure, it says nothing instead of guessing.</p>
+      </div>
+      <div class="step">
+        <span class="n">4</span>
+        <h3>Checks official prices</h3>
+        <p>Shows the product's latest price level and its 7-day and 30-day change from PriceCatcher, and notes whether the real numbers agree with the call.</p>
+      </div>
+      <div class="step">
+        <span class="n">5</span>
+        <h3>Says what to do</h3>
+        <p>Scores urgency out of 100 from confidence, direction, price agreement and how fresh the story is, then picks ACT NOW, WATCH, MONITOR or NO ACTION with a concrete next step. Only calls at 70% confidence or above can reach ACT NOW.</p>
+      </div>
+      <div class="step">
+        <span class="n">6</span>
+        <h3>Explains why</h3>
+        <p>Links the trigger to one of 26 known causes, like feed costs, floods, bird flu or subsidy changes. The server hands your chat app only computed facts and writes no sentences itself, so it can't invent a number.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec ask" id="ask">
+  <div class="wrap">
+    <div class="ask-intro">
+      <h2>Ask it like you'd ask a friend</h2>
+      <p class="lead">Shoppers can ask if chicken is about to cost more. Journalists can ask which stories hint at price pressure. Analysts can ask how good the model really is.</p>
+    </div>
+    <div class="chat">
+      <p class="q">What Malaysian news in the last 2 days could affect food prices?</p>
+      <p class="used">Claude uses scan_alerts</p>
+      <p class="q">Show the price trend for chicken.</p>
+      <p class="used">Claude uses price_context</p>
+      <p class="q">How accurate is this model?</p>
+      <p class="used">Claude uses backtest_report</p>
+      <p class="q">How did past live predictions do?</p>
+      <p class="used">Claude uses forward_validation</p>
+      <p class="q">Show me cases where it got it wrong.</p>
+      <p class="used">Claude uses demo_cases</p>
+    </div>
+  </div>
+  <div class="wrap tools" style="display:block">
+    <h3>All nine tools</h3>
+    <div class="tool-list">
+      <div class="tool"><code>list_domains</code><span>See which product groups and names it tracks.</span></div>
+      <div class="tool"><code>fetch_news</code><span>Get recent articles from the live feeds.</span></div>
+      <div class="tool"><code>filter_relevant</code><span>Keep only stories about tracked products.</span></div>
+      <div class="tool"><code>predict_impact</code><span>Predict price direction for one article or pasted text, with the reasoning.</span></div>
+      <div class="tool"><code>price_context</code><span>Show a product's latest price level and recent change.</span></div>
+      <div class="tool"><code>scan_alerts</code><span>The main view: ranked alerts with priority, action and reasoning.</span></div>
+      <div class="tool"><code>backtest_report</code><span>Show past test results next to three baselines, per product and quarter by quarter.</span></div>
+      <div class="tool"><code>forward_validation</code><span>Show how live predictions scored once real prices came in.</span></div>
+      <div class="tool"><code>demo_cases</code><span>Past cases with known outcomes, including ones it got wrong.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec on-pale honest" id="honest">
+  <div class="wrap">
+    <div class="honest-intro">
+      <h2>It tells you when it isn't sure</h2>
+      <p class="lead">News is a weak signal for grocery prices, and only 305 labelled examples could be built from 153,981 articles. MyMarket is an awareness alert, not a forecast, and it keeps its own report card.</p>
+      <div class="status"><strong>Status: hackathon MVP, version 0.4.</strong> On 40 held-out test cases the model scores macro F1 0.333 against 0.315 for simple price momentum, with a 95% interval of 0.218 to 0.449. That is a tie, not a win. Alerts at 70% confidence or above were right 0.70 of the time across 20 alerts. Run <code>backtest_report</code> for the full report.</div>
+    </div>
+    <div>
+      <div class="promise"><h3>It can say nothing</h3><p>Under 55% confidence, it abstains rather than guess.</p></div>
+      <div class="promise"><h3>It has to beat simple rivals</h3><p>The model is compared with always guessing the most common outcome, the price trend over the 28 days before the article, and plain keyword rules. If it doesn't win, the report says so.</p></div>
+      <div class="promise"><h3>No peeking at the future</h3><p>It's tested on newer articles than it learned from, with a 28-day gap in between, and re-tested quarter by quarter.</p></div>
+      <div class="promise"><h3>The AI can't make up figures</h3><p>The server sends only the model's output and computed facts in a strict format, and by default writes no sentences itself. Every explanation says it is the known cause, not a readout of the model's internals.</p></div>
+      <div class="promise"><h3>Live calls get marked later</h3><p>Every prediction is logged, then scored against fresh prices 28 days on. No live calls have matured yet.</p></div>
+      <div class="promise"><h3>It shows its misses</h3><p>Demo cases include wrong calls, like a 95% confident "stable" that was wrong.</p></div>
+      <div class="promise"><h3>One news source, for now</h3><p>It learned from The Star only and runs live on other outlets, so live use is a test it hasn't seen.</p></div>
+      <div class="promise"><h3>Right tool for inflation</h3><p>PriceCatcher is a price survey. For official inflation, use the DOSM consumer price index.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="connect">
+  <div class="wrap">
+    <div class="connect-head">
+      <h2>Connect it to Claude</h2>
+      <p class="lead">Use the hosted endpoint, or run it yourself. It runs on a laptop with 8 GB of RAM and no GPU. Every data source is free.</p>
+    </div>
+
+    <div class="cs">
+      <div class="num">1</div>
+      <div>
+        <h3>Use the remote endpoint</h3>
+        <p>Add this URL as a custom connector in Claude, or point any MCP client that speaks streamable HTTP at it. It is live only while the demo server is running.</p>
+        <div class="code">
+          <pre id="c0">https://mymarket-my.loca.lt/mcp</pre>
+          <button class="copy" type="button" data-copy="c0">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cs">
+      <div class="num">2</div>
+      <div>
+        <h3>Or run it locally: test in MCP Inspector</h3>
+        <p>Run this in the project folder, open the link it prints, then call <code>list_domains</code> and <code>scan_alerts</code>.</p>
+        <div class="code">
+          <pre id="c1">npx @modelcontextprotocol/inspector uv run python -m mymarket.mcp_server</pre>
+          <button class="copy" type="button" data-copy="c1">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cs">
+      <div class="num">3</div>
+      <div>
+        <h3>Add it to Claude Desktop</h3>
+        <p>Open the config file and paste this in. On Mac it's <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>. On Windows it's <code>%APPDATA%\Claude\claude_desktop_config.json</code>. Replace <code>/ABSOLUTE/PATH/mymarket</code> with the folder where you cloned the repo.</p>
+        <div class="code">
+          <pre id="c2">{
+  "mcpServers": {
+    "mymarket": {
+      "command": "uv",
+      "args": ["--directory", "/ABSOLUTE/PATH/mymarket", "run", "python", "-m", "mymarket.mcp_server"]
+    }
+  }
+}</pre>
+          <button class="copy" type="button" data-copy="c2">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cs">
+      <div class="num">4</div>
+      <div>
+        <h3>Restart and ask</h3>
+        <p>Fully quit and reopen Claude Desktop, check the tools icon, then ask what news could affect food prices.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="mymarket home">
+      <svg class="logo logo-lg" viewBox="4 16 580 128" role="img" aria-label="mymarket"><use href="#logo-tag"/></svg>
+    </a>
+    <div>
+      <p><strong>Awareness only, not financial advice.</strong> MyMarket MCP is a hackathon MVP, version 0.4.</p>
+      <p>Price data comes from PriceCatcher (KPDN via data.gov.my, CC BY 4.0). For official inflation figures, use DOSM's consumer price index.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var nav = document.querySelector('.nav'), btn = nav.querySelector('.menu-btn');
+  function set(open){ nav.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); btn.textContent = open ? 'Close' : 'Menu'; }
+  btn.addEventListener('click', function(){ set(!nav.classList.contains('open')); });
+  nav.querySelectorAll('ul a').forEach(function(a){ a.addEventListener('click', function(){ set(false); }); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && nav.classList.contains('open')){ set(false); btn.focus(); } });
+  window.matchMedia('(min-width:1041px)').addEventListener('change', function(m){ if(m.matches) set(false); });
+})();
+document.querySelectorAll('[data-copy]').forEach(function(btn){
+  btn.addEventListener('click', async function(){
+    var el = document.getElementById(btn.dataset.copy);
+    var ok = false;
+    try { await navigator.clipboard.writeText(el.textContent); ok = true; }
+    catch(e){
+      try {
+        var r = document.createRange(); r.selectNodeContents(el);
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        ok = document.execCommand('copy');
+        if(!ok){ btn.textContent = 'Press Ctrl+C'; }
+      } catch(e2){ btn.textContent = 'Select it'; }
+    }
+    if(ok){ btn.textContent = 'Copied'; }
+    setTimeout(function(){ btn.textContent = 'Copy'; }, 2200);
+  });
+});
+</script>
+</body>
+</html>
