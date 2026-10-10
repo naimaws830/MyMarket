@@ -292,6 +292,9 @@ def main(argv: list[str] | None = None) -> int:
             "prefix": config.EMBED_PREFIX,
             "version": f"v1-{best_name}",
             "merged_products": merged,
+            # Recorded so the server reports the horizon this model was
+            # actually trained on, rather than whatever config says today.
+            "horizon_days": int(frame["horizon_days"].iloc[0]),
         },
         config.MODEL_FILE,
     )

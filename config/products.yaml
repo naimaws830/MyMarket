@@ -3,7 +3,11 @@
 # Aliases and exclude phrases come from PRD section 5.
 
 label:
-  horizon_days: 14        # H in PRD 6.4
+  # H in PRD 6.4. 28 beat 14 on validation and is what the shipped model
+  # was trained on. Changing this without retraining makes the server
+  # report a horizon the model does not predict, and makes forward
+  # validation score live predictions at the wrong date.
+  horizon_days: 28
   theta_k: 0.5            # k in PRD 6.4, theta_p = k * std(ret) over TRAIN only
   min_premises: 5         # skip a day with fewer reporting premises than this
 

@@ -285,7 +285,7 @@ def predict_impact(
     predictions = predictor.predict(article["title"], article["summary"], article["body"], wanted)
     return {
         "article": {"title": article["title"], "url": url},
-        "horizon_days": config.settings().horizon_days,
+        "horizon_days": predictor.trained_horizon_days() or config.settings().horizon_days,
         "model_version": predictor.model_version(),
         "products": [p.to_dict() for p in predictions],
     }

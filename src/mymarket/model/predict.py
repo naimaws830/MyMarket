@@ -111,6 +111,19 @@ def _bundle() -> dict[str, Any]:
     return bundle
 
 
+def trained_horizon_days() -> int | None:
+    """Horizon the shipped model was trained on, or None when unknown.
+
+    The config default can drift from the trained model. The model is the
+    authority, because it is the thing making the prediction.
+    """
+    try:
+        value = _bundle().get("horizon_days")
+        return int(value) if value else None
+    except ModelMissing:
+        return None
+
+
 def model_version() -> str:
     """Version string recorded in the bundle, or unknown."""
     try:
